@@ -92,11 +92,11 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # --- Feedback loop ---
-if st.session_state.state2 == "feedback_loop":
-    strat = st.session_state.strategy2
+if st.session_state2.state2 == "feedback_loop":
+    strat = st.session_state2.strategy2
 
     st.subheader("🤖 중재 전략 피드백")
-    st.write(f"**문제 상황:** {st.session_state.situation2}")
+    st.write(f"**문제 상황:** {st.session_state2.situation2}")
     st.write(f"**원인:** {strat.get('cause')}")
     st.write("**중재 후보:**")
     for i, intr in enumerate(strat.get('intervention', []), 1):
@@ -115,18 +115,19 @@ if st.session_state.state2 == "feedback_loop":
         idx = st.session_state2.loop2_index
         current_strategy = st.session_state2.generated_strategies2[idx]
 
-        if idx == 0:
-            previous_situation = st.session_state2.situation2
-        else:
-            previous_situation = st.session_state2.generated_situations2[idx - 1]
+        previous_situation = (
+            st.session_state2.situation2 if idx == 0
+            else st.session_state2.generated_situations2[idx - 1]
+        )
         
         intervention_txt = ""
         for item in current_strategy.get('intervention', []):
-            strategy = item.get('strategy', '')
-            purpose = item.get('purpose', '')
-            immediate = item.get('example', {}).get('immediate', '')
-            standard = item.get('example', {}).get('standard', '')
-            intervention_txt += f"- 전략: {strategy}\n  - 목적: {purpose}\n  - 즉시 적용: {immediate}\n  - 표준 상황: {standard}\n\n"
+            intervention_txt += (
+                f"- 전략: {item.get('strategy')}\n"
+                f"  - 목적: {item.get('purpose')}\n"
+                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
+                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
+            )
    
         prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
                      {previous_situation}
@@ -151,13 +152,40 @@ if st.session_state.state2 == "feedback_loop":
             st.session_state2.user_comments2.append(comment)
             
             # 4. MemoryAgent가 전략 생성
-            full_input = new_situation + "\n전문가 의견: " + comment
             agent = st.session_state2.agent
-            new_strategy = agent.propose_intervention(full_input)
-            st.session_state2.generated_strategies2.append(new_strategy)
+            caregraph = st.session_state2.graph
+            user_id = "A123"
+            situation = new_situation
+            sid, similar_events = caregraph.find_similar_events(user_id, situation)
+            user_profile = agent._profile_ctx(user_id)
+
+            if sid is not None and similar_events:
+                formatted_events = "\n".join([
+                    f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
+                    for i, e in enumerate(similar_events)
+                ])
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+            else:
+                response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
+            
+            parsed = agent._parse_json(response)
+            if parsed is None or not isinstance(parsed, dict):
+                st.error("⚠️ 중재 전략 생성 실패: JSON 파싱 오류")
+                st.stop()
+            try:
+                action_input = parsed["action_input"]
+                first_event = list(action_input.values())[0]
+                cause = first_event.get("cause")
+                interventions = first_event.get("intervention")
+                structured = {"cause": cause, "intervention": interventions}
+                st.session_state2.generated_strategies2.append(structured)
+            except Exception as e:
+                st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
+                st.stop()
+
             st.session_state2.loop2_index += 1
             st.rerun()
-
+            
     elif st.session_state2.loop2_index >= 3 and not st.session_state2.survey2_saved:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         expert_id = st.session_state2.expert_id if 'expert_id' in st.session_state2 else st.session_state.expert_id
