@@ -80,7 +80,7 @@ st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 �
 
 **LLM의 답변에 대하여 판단 하실 때 위에서 제시 된 자폐인의 프로파일과 관찰일지를 참고해주시면 감사드리겠습니다.**
 
-원본 링크 : https://www.youtube.com/watch?v=C0rdZOhet24
+원본 링크 : https://www.youtube.com/watch?v=Cflrzyu_WZk
 """)
 
 # Expert ID input
