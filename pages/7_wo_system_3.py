@@ -25,7 +25,7 @@ if 'survey_submitted' not in st.session_state7:
     st.session_state7.survey_submitted = False
 
 # 비디오
-st.video("https://youtu.be/GjddtdjWaj8")
+st.video("https://youtube.com/shorts/uDWzTxF8qeY")
 
 # 멜트다운 초기 상황에 대한 첫 중재 방안 입력
 if "comments_history" not in st.session_stat7e:
