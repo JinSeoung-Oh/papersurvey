@@ -7,7 +7,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from pages.tool import _4oMiniClient
+from pages.tools import _4oMiniClient
 
 st.title("상황 1: 일상생활에서의 자폐인 Meltdown")
 st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 Ian은 창문 가까이에서 커튼을 젖히고 바깥을 바라보고 있는데, 바깥은 매우 밝습니다.
