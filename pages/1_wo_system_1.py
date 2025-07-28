@@ -114,5 +114,5 @@ if st.session_state.survey1_submitted:
             st.switch_page("pages/0_ProfessionalExperience.py")       # pages/home.py (확장자 제외)
     with col2:
         if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/2_survey.py")    # pages/survey2.py (확장자 제외)
+            st.switch_page("pages/2_w_system_1.py")    # pages/survey2.py (확장자 제외)
         
