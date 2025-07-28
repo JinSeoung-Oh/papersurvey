@@ -5,14 +5,13 @@ import joblib
 import os
 from json_repair import repair_json
 import re
-
-from pages.tool import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
-from my_switch import switch_page
 import pandas as pd
-
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT))
+
+from pages.tool import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 
 # 비디오
 st.video("https://youtu.be/GjddtdjWaj8")
