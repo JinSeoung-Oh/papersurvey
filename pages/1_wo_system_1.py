@@ -1,25 +1,21 @@
+from pathlib import Path
 import streamlit as st
 import datetime
 import os
 
-st.title("설문 1: 그랜드 케니언에서의 자폐인 Meltdown")
-st.markdown(""" 해당 영상은 자폐인이 가족과 함께 그랜드 케니언으로 여행을 간 유튜브입니다. 
-영상 속에서 자폐인의 Meltdown이 나타나는 부분은 처음 주차장에서입니다.
-주차장에서 자폐인은 빨간 자동차에서 떨어지지 않으려는 모습을 보이며 그의 형으로 보이는 사람이 자폐인을 달래는 모습을 보이고 있습니다.
-중재 방안 후보들은 각각 strategy, purpose, immediate, standard라는 요소를 가지고 있습니다.
-여기서 strategy는 중재 전략의 이름이며 purpose는 해당 중재 전략의 목적입니다.
-immediate는 그 순간에 당장 조치 할 수 있는 중재 전략이며 standard는 일반적인 수행 할 수 있는 중재 전략을 의미합니다.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-Survey_1의 목적은 LLM이 중재 전략을 얼마나 적절하게 제시 할 수 있는지 그 능력을 측정하는 것에 목적이 있습니다.
-
-전체 내용을 보시고자 한다면 아래 링크를 확인해주시면 감사드리겠습니다.
-해당 클립의 원본 링크 : https://www.youtube.com/watch?v=C0rdZOhet24
-
-각 항목에 대하여 0 = 전혀 부적절, 1 = 대체로 부적절, 2 = 보통 이하, 3 = 보통 이상, 4 = 대체로 적절, 5 = 매우 적절 로 판단해주시면 감사드리겠습니다.
-
-설문 조사가 끝나면 반드시 제출 버튼을 눌러주시길 바라겠습니다. 누르셔야지만 다음 페이지로 이동하실 수 있으십니다.
+st.title("설문 1: 일상생활에서의 자폐인 Meltdown")
+st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 Ian은 창문 가까이에서 커튼을 젖히고 바깥을 바라보고 있는데, 바깥은 매우 밝습니다.
+바깥을 바라보던 그는 잠시 후 눈에 띄게 불안한 상태에 빠지며, 울음을 터뜨리고 큰 소리로 외치며 강한 정서적 동요를 보입니다.
+그는 “Lucifer가 나를 훔쳐가려 한다”, “비가 와야 한다”고 반복적으로 말하는데, 특히 비가 오지 않으면 캠핑을 가지 못한다고 생각하고 있으며
+동시에 비가 와야 더러운 공기를 씻어낼 수 있다는 믿음을 갖고 있는 것으로 보입니다. 
+Ian은 울면서 소리를 지르고, 언어적 혼란, 강박적인 반복 발화, 감정 폭발 등의 모습을 보이고 있습니다.
+영상에 의하면 Ian은 감각적 자극 완하를 위하여 담요를 머리 끝까지 쓰는 것을 선호하는 것으로 보입니다.
 """)
 
+if 'llm' not in st.session_state:
+    st.session_state.llm = _4oMiniClient()
 
 # ID가 없으면 작성하라고 유도
 if "expert_id" not in st.session_state or not st.session_state.expert_id:
@@ -32,87 +28,92 @@ if 'survey1_submitted' not in st.session_state:
 # 비디오
 st.video("https://youtu.be/GjddtdjWaj8")
 
-# 해결 방안 후보들
-interventions = [
-    """1. **strategy**: 환경적 자극 조절  \n**purpose**: 감각 과부하를 예방하고 자폐인이 보다 안정된 환경에서 상황을 받아들일 수 있도록 돕기 위함  \n**immediate**: 문제가 발생하면 빨간 밴이나 기타 시각적 자극 요소로부터 거리를 두도록 유도하며, 조용한 구역으로 천천히 이동시킴  \n**standard**: 야외 활동 전 또는 활동 중에 불필요한 자극(강한 빛, 소음 등)을 줄일 수 있는 도구(예: 선글라스, 귀마개)와 함께, 미리 정해진 조용한 휴식 구역을 안내""",
-    """2. **strategy**: 시각적 지원 제공  \n**purpose**: 자폐인의 시각 의사소통 선호를 활용하여 상황 예측 가능성을 높이고, 안정감을 제공하기 위함  \n**immediate**: 불안 징후가 보이면 간단한 그림 카드나 사진을 보여주며 현재 상황과 앞으로의 행동을 간략히 설명  \n**standard**: 사전에 야외 활동 스케줄이나 사회 이야기를 준비해 상황 전개를 시각적으로 안내하고, 자폐인이 이해할 수 있도록 반복적으로 활용"""
-]
+# 멜트다운 초기 상황에 대한 첫 중재 방안 입력
+if "comments_history" not in st.session_state:
+    st.session_state.comments_history = []
 
-st.subheader("💡 제안된 해결 방안들에 대해 각각 평가해 주세요.")
+if "generated_situations" not in st.session_state:
+    st.session_state.generated_situations = []
 
-ratings = {}
-for i, intervention in enumerate(interventions):
-    st.markdown(intervention.strip())
-    # 1) 적합성
-    suitability = st.slider(
-        "→ 제안된 LLM 기반 중재 방안이 실제 임상·현장 상황에서 자폐인 중재에 적절하다고 생각하십니까? (0~5)",
-        0, 5, key=f"suitability_{i}"
-    )
-    # 2) 효과 예측
-    effectiveness = st.slider(
-        "→ 해당 방안을 적용했을 때 실제 개입 효과를 기대할 수 있다고 보십니까? (0~5)",
-        0, 5, key=f"effectiveness_{i}"
-    )
-    # 3) 신뢰성
-    reliability = st.slider(
-        "→ 제안된 내용이 충분히 근거 있고 일관성 있다고 느끼십니까? (0~5)",
-        0, 5, key=f"reliability_{i}"
-    )
+if "loop_index" not in st.session_state:
+    st.session_state.loop_index = 0
 
-    ratings[intervention] = {
-        "suitability": suitability,
-        "effectiveness": effectiveness,
-        "reliability": reliability
-    }
-    st.markdown("---")
+# 초기 질문만 출력
+if st.session_state.loop_index == 0:
+    comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment")
+    if st.button("다음"):
+        if comment.strip() == "":
+            st.warning("중재 방안을 입력해주세요.")
+            st.stop()
+        st.session_state.comments_history.append(comment)
+        st.session_state.loop_index += 1
+        st.rerun()
 
-clarity = st.slider(
-    "→ LLM의 출력이 이해하기 쉽고 명료합니까? (0~5)",
-    0, 5, key="clarity"
-)
-overall_satisfaction = st.slider(
-    "→ 전체적으로 본 LLM 기반 중재 방안에 얼마나 만족하십니까? (0~5)",
-    0, 5, key="overall_satisfaction"
-)
+# 반복 상황 생성 루프
+elif 1 <= st.session_state.loop_index <= 3:
+    idx = st.session_state.loop_index
 
-# 추가 의견 (선택사항)
-comments = st.text_area(
-    "전체적인 의견 또는 피드백 (선택사항)"
-)
+    # 상황 생성
+    if len(st.session_state.generated_situations) < idx:
+        user_comment = st.session_state.comments_history[-1]
+        previous_situation = st.session_state.generated_situations[-1] if st.session_state.generated_situations else "초기 멜트다운: 커튼 밖의 밝은 빛 자극으로 인하여 멜트 다운을 일으킴. 소리를 지르고 울면서 불안한 모습을 보이고 있음"
+        prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
+                     {previous_situation}
+                     이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
+                     {user_comment}
+                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요.
+                  """
+        new_situation = st.session_state.llm.call_as_llm(prompt)
+        st.session_state.generated_situations.append(new_situation)
 
-# 제출
-if st.button("제출"):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    expert_id = st.session_state.expert_id
-    user_dir = f"responses/{expert_id}"
-    os.makedirs(user_dir, exist_ok=True)
-    filepath = os.path.join(user_dir, "survey1.csv")
+    # 새로운 상황 제시 및 중재 방안 입력
+    st.markdown(f"### 새로 생성된 상황 {idx}")
+    st.markdown(st.session_state.generated_situations[idx - 1])
 
-    # CSV 헤더 추가 (최초 생성 시에만)
-    if not os.path.exists(filepath):
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("timestamp,expert_id,intervention,suitability,effectiveness,reliability,clarity,overall_satisfaction,comments\n")
+    new_comment = st.text_area("이 상황에 적절한 중재 방안을 입력해주세요", key=f"comment_{idx}")
+    if st.button("다음", key=f"next_{idx}"):
+        if new_comment.strip() == "":
+            st.warning("중재 방안을 입력해주세요.")
+            st.stop()
+        st.session_state.comments_history.append(new_comment)
+        st.session_state.loop_index += 1
+        st.rerun()
 
-    # 응답 저장
-    with open(filepath, "a", encoding="utf-8") as f:
-        for intervention, scores in ratings.items():
-            # ratings[intervention] == {"suitability":…, "effectiveness":…, "reliability":…}
-            f.write(
-                f"{now},{expert_id},"
-                f"\"{intervention}\","
-                f"{scores['suitability']},{scores['effectiveness']},{scores['reliability']},"
-                f"{clarity},{overall_satisfaction},"
-                f"\"{comments}\"\n"
-            )
-    st.session_state.survey1_submitted = True
-    st.success("응답이 저장되었습니다. 감사합니다!")
 
-if st.session_state.survey1_submitted:
+elif st.session_state.loop_index > 3:
+    st.success("3회의 상황 생성 및 중재 응답이 완료되었습니다. 감사합니다.")
+
+    if not st.session_state.survey1_submitted:
+        # 자동 저장
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expert_id = st.session_state.expert_id
+        user_dir = f"responses/{expert_id}"
+        os.makedirs(user_dir, exist_ok=True)
+        filepath = os.path.join(user_dir, "survey1_loop.csv")
+
+        # 파일이 없다면 헤더 추가
+        if not os.path.exists(filepath):
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("timestamp,expert_id,loop_index,situation,intervention\n")
+
+        # 상황 + 중재 방안 저장
+        with open(filepath, "a", encoding="utf-8") as f:
+            for i, (situation, intervention) in enumerate(zip(st.session_state.generated_situations, st.session_state.comments_history[1:]), start=1):
+                f.write(
+                    f"{now},{expert_id},{i},"
+                    f"\"{situation.strip()}\","
+                    f"\"{intervention.strip()}\"\n"
+                )
+
+        st.session_state.survey1_submitted = True
+        st.info("응답이 저장되었습니다. 감사합니다.")
+
+    # 다음 페이지 이동 버튼
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
-            st.switch_page("pages/0_ProfessionalExperience.py")       # pages/home.py (확장자 제외)
+            st.switch_page("pages/0_ProfessionalExperience.py")
     with col2:
         if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/2_w_system_1.py")    # pages/survey2.py (확장자 제외)
-        
+            st.switch_page("pages/2_w_system_1.py")
