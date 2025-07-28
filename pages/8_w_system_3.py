@@ -12,7 +12,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from pages.tool import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
+from pages.tools import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 
 # 비디오
 st.video("https://youtube.com/shorts/uDWzTxF8qeY")
