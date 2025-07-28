@@ -115,8 +115,8 @@ if st.session_state.survey3_submitted:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
-            st.switch_page("pages/2_survey_2.py")       # pages/home.py (확장자 제외)
+            st.switch_page("pages/6_servey_system_2.py")       # pages/home.py (확장자 제외)
     with col2:
         if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/4_improve_survey.py")    # pages/survey2.py (확장자 제외)
+            st.switch_page("pages/8_w_system_3.py")    # pages/survey2.py (확장자 제외)
     
