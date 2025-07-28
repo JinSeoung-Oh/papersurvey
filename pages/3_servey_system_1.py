@@ -15,8 +15,8 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # 설문 제출 여부 상태 초기화
-if 'survey7_submitted' not in st.session_state:
-    st.session_state.survey7_submitted = False
+if 'survey_submitted' not in st.session_state3:
+    st.session_state3.survey_submitted = False
 
 # 바로 설문 시작
 st.subheader("📋 설문조사: 시스템 사용 vs 비사용 비교 평가")
@@ -68,7 +68,7 @@ if st.button("설문 제출"):
             f"{q1},{q2},{q3},{q4},{q5},{q6},{q7},{q8},{q9},{q10},{q11},\"{q12}\"\n"
         )
 
-    st.session_state.survey7_submitted = True
+    st.session_state3.survey_submitted = True
     st.success("응답이 저장되었습니다. 감사합니다!")
 
 # 제출 후 페이지 이동 버튼
