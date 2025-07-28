@@ -103,9 +103,9 @@ if st.session_state5.state == "feedback_loop":
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
     if 'loop2_index' not in st.session_state2:
-        st.session_state5.loop2_index = 0
+        st.session_state5.loop_index = 0
         st.session_state5.generated_situations = []
-        st.session_state5.generated_strategies = [st.session_state2.strategy]  # 초기 전략 포함
+        st.session_state5.generated_strategies = [st.session_state5.strategy]  # 초기 전략 포함
         st.session_state5.user_comments = []
         st.session_state5.survey_saved = False
         
