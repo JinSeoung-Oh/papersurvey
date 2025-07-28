@@ -15,7 +15,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # 비디오
-st.video("https://youtu.be/GjddtdjWaj8")
+st.video("https://youtu.be/AaWWfjb8DjM")
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
