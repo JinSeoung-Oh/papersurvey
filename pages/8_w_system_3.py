@@ -15,6 +15,9 @@ if not st.session_state.get("caregraph_effectiveness_1_init"):
         st.session_state.pop(key, None)
     st.session_state.caregraph_effectiveness_1_init = True
 
+# 비디오
+st.video("https://youtube.com/shorts/uDWzTxF8qeY")
+
 from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
