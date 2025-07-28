@@ -111,7 +111,7 @@ elif st.session_state3.loop_index > 3:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
-            st.switch_page("pages/0_ProfessionalExperience.py")
+            st.switch_page("pages/3_servey_system_1.py")
     with col2:
         if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/2_w_system_1.py")
+            st.switch_page("pages/5_w_system_2.py")
