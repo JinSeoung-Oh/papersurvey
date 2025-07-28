@@ -4,6 +4,8 @@ import datetime
 import os
 from pages.tool import _4oMiniClient
 
+st.write(os.getcwd())
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 st.title("상황 1: 일상생활에서의 자폐인 Meltdown")
