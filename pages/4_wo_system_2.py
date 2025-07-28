@@ -3,6 +3,8 @@ import streamlit as st
 import datetime
 import os
 
+from pages.tool import _4oMiniClient
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 st.title("상황 2: 등교길에서 발생한 자폐인 Meltdown")
