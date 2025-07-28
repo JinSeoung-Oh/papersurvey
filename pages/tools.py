@@ -60,9 +60,9 @@ class UserProfile:
 class CareGraph:
     FAILURE_THRESHOLD = 5
 
-    def __init__(self, embedding_model=None):
+    def __init__(self, llm: ChatOpenAI):
         self.graph = nx.DiGraph()
-        self.embeddings = embedding_model or OpenAIEmbeddings()
+        self.llm = llm
         self.situation_counter = 0
 
     def add_profile(self, profile: UserProfile):
@@ -88,12 +88,10 @@ class CareGraph:
     def add_situation(self, user_id: str, text: str) -> int:
         sid = self.situation_counter
         node = self._situation_node(user_id, sid)
-        emb = self.embeddings.embed_query(text)
         self.graph.add_node(
             node,
             type='situation',
             text=text,
-            embedding=emb
         )
         self.graph.add_edge(user_id, node, relation='HAS_SITUATION')
         self.situation_counter += 1
@@ -107,12 +105,10 @@ class CareGraph:
             raise ValueError('Situation node missing')
         cause_node = self._cause_node(user_id, situation_id, cause)
         if not self.graph.has_node(cause_node):
-            emb_c = self.embeddings.embed_query(cause)
             self.graph.add_node(
                 cause_node,
                 type='cause',
                 text=cause,
-                embedding=emb_c
             )
             self.graph.add_edge(sit_node, cause_node, relation='HAS_CAUSE')
         return cause_node
@@ -136,14 +132,12 @@ class CareGraph:
                 f"{strategy} {intervention.get('purpose','')} "
                 f"{intervention.get('example','')}"
             ).strip()
-            emb_i = self.embeddings.embed_query(text)
             self.graph.add_node(
                 intr_node,
                 type='intervention',
                 strategy=strategy,
                 purpose=intervention.get('purpose'),
                 example=intervention.get('example'),
-                embedding=emb_i,
                 failures=0
             )
             self.graph.add_edge(cause_node, intr_node, relation='HAS_INTERVENTION')
@@ -156,7 +150,6 @@ class CareGraph:
                 results.append({
                     'situation_id': sit_node[2],
                     'text': attrs.get('text'),
-                    'embedding': attrs.get('embedding')
                 })
         return results
 
@@ -187,21 +180,74 @@ class CareGraph:
                         'failures': attrs.get('failures', 0)
                     })
         return results
+        
+    def _extract_scenario(self, full_text: str) -> str:
+        import re
+        """
+        full_text에서 Setting, Observations, Others/Environment 섹션만
+        추출해서 하나의 문자열로 합쳐 반환.
+        """
+        # Setting
+        m_set = re.search(r"Setting:\s*(.*?)(?=\n\n)", full_text, flags=re.DOTALL)
+        setting = m_set.group(1).strip() if m_set else ""
 
+        # Observations
+        m_obs = re.search(
+            r"Observations.*?:\s*(.*?)(?=\n\nOthers/Environment)",
+            full_text, flags=re.DOTALL
+        )
+        observations = m_obs.group(1).strip() if m_obs else ""
+
+        # Others/Environment
+        m_oth = re.search(
+            r"Others/Environment:\s*(.*?)(?=Consistency Rule:)",
+            full_text, flags=re.DOTALL
+        )
+        others = m_oth.group(1).strip() if m_oth else ""
+
+        # 합친 시나리오
+        return "\n\n".join(filter(None, [setting, observations, others]))
+        
     def find_similar_events(
         self, user_id: str, text: str
     ) -> Tuple[Optional[int], List[Dict[str, Any]]]:
-        q_emb = self.embeddings.embed_query(text)
+        # 1) 쿼리 텍스트도 시나리오만 추출
+        query_scenario = self._extract_scenario(text)
+
         best_id = None
         best_sim = -1.0
         for sit in self.list_situations(user_id):
-            emb = sit['embedding']
-            sim = np.dot(q_emb, emb) / (np.linalg.norm(q_emb) * np.linalg.norm(emb))
-            if sim > best_sim:
+            # sit['text']가 full_text라면 시나리오만 추출
+            stored_text = sit['text']
+            if isinstance(stored_text, str):
+                stored_scenario = self._extract_scenario(stored_text)
+            else:
+                # 이미 dict라면 필요한 필드 합치기
+                stored_scenario = "\n\n".join(filter(None, [
+                    stored_text.get("Setting",""),
+                    stored_text.get("Observations",""),
+                    stored_text.get("Others/Environment","")
+                ]))
+            prompt = f"""You are a text similarity evaluator. Return a number between 0 (completely different) and 1 (identical)
+            Compare these:\n\nA:\n{query_scenario}\n\nB:\n{stored_scenario}. ONLY RETURN SCORE(INT)"""
+            
+            sim = self.llm.call_as_llm(prompt)
+            sim_str = sim.strip()
+
+            m = re.search(r"(\d+\.\d+)", sim_str)
+            if not m:
+                return None, []
+                
+            sim_value = float(m.group(1))
+            if sim_value > best_sim:
                 best_sim = sim
                 best_id = sit['situation_id']
-        if best_id is None or best_sim < 0.6:
+
+        print(f"[RESULT] Best SIM: {best_sim:.4f} | SID: {best_id}")
+
+        if best_id is None or best_sim < 0.8:
             return None, []
+            
         events = self.list_events(user_id, situation_id=best_id)
         return best_id, events
 
@@ -266,9 +312,9 @@ class MemoryAgent:
             self._profile_ctx(user_id) +
             f"{user_input}을 철저하게 수행해주세요" + 
             "**event** 및 **observed_behavior** 그리고 **intervention_strategies**을 포함하여 구체적인 JSON 리스트로 제시하세요." + 
-            "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다. **steps**를 키 값으로 해주세요" +
+            "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 과거 중재에 성공한적이 있는 {similar_events}를 참고하여 {user_input}에 알맞게 전략 수립 후에 제시해주세요." +
-            f"당신이 수립한 전략은 {user_profile}을 역시 고려한 전략이어야만 합니다." +
+            f"당신이 수립한 전략은 일반적인 전략이 아닌 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
@@ -299,17 +345,18 @@ class MemoryAgent:
         situation: str,
     ) -> str:
         prompt = (
-            f"문제 상황: {situation}" +
-            f"이전 전략 '{failed_event}'가 실패했습니다. 사용자 피드백: {user_feedback}. " +
-            f"자폐인 프로파일 : {user_profile}" + 
-            "주어진 이전 전략은 문제 상황을 해결하지 못 하였습니다. 사용자 피드백과 자폐인 프로파일을 반영하여 새로운 중재 전략을 제시해주세요" + 
+            f"문제 상황: {situation}" + "\n"
+            f"이전 전략 '{failed_event}'가 실패했습니다. 사용자 피드백: {user_feedback}. " + "\n"
+            f"자폐인 프로파일 : {user_profile}" + "\n"
+            "주어진 이전 전략은 문제 상황을 해결하지 못 하였습니다. 사용자 피드백과 자폐인 프로파일을 반영하여 새로운 중재 전략을 제시해주세요" +
             "**event** 및 **observed_behavior** 그리고 **intervention_strategies**을 포함하여 구체적인 JSON 리스트로 제시하세요." +
             "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 {user_feedback}을 최우선으로 고려하여 전략 수립 후에 제시해주세요." +
-            f"당신이 수립한 전략은 일반적인 전략이 아닌 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요" +
+            f"당신이 수립한 전략은 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
+        print(response)
         return response
 
     def ask(
@@ -331,7 +378,7 @@ class MemoryAgent:
         user_id: str,
         failed_event: str,
         user_profile: str,
-        situation: str
+        situation: str,
     ) -> str:
         # 1) Ask simple success/failure
         sid = failed_event['situation_id']
@@ -346,7 +393,7 @@ class MemoryAgent:
         # 2) On failure, get detailed feedback
         detail = input("실패 이유나 조치 후 자폐인의 반응 등을 구체적으로 입력해주세요: ")
         self.cg.record_outcome(user_id, sid, cause, strategy, success=False)
-        return self.alt_ask(user_id, detail, failed_event, user_profile, situation)
+        return self.alt_ask(user_id, detail, failed_event, user_profile,situation)
 
     def feedback_and_retry(
         self,
