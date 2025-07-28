@@ -8,18 +8,14 @@ import re
 
 from pages.tool import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 from my_switch import switch_page
-
-if not st.session_state.get("caregraph_effectiveness_1_init"):
-    # 최초 진입 시에만 이전 페이지 키 삭제
-    for key in ['state2','situation2','strategy2','history2','loop_count2']:
-        st.session_state.pop(key, None)
-    st.session_state.caregraph_effectiveness_1_init = True
-
-# 비디오
-st.video("https://youtu.be/AaWWfjb8DjM")
+import pandas as pd
 
 from pathlib import Path
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# 비디오
+st.video("https://youtu.be/GjddtdjWaj8")
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
@@ -28,29 +24,30 @@ def load_graph(path: str) -> CareGraph:
     return graph
 
 # --- Session initialization ---
-if 'graph' not in st.session_state:
+if 'graph' not in st.session_state2:
     # Initialize or load CareGraph and profile
     if os.path.exists("../caregraph_full.pkl"):
-        st.session_state.graph = load_graph("../caregraph_full.pkl")
+        st.session_state2.graph = load_graph("../caregraph_full.pkl")
     else:
-        st.session_state.graph = CareGraph()
+        st.session_state2.graph = CareGraph()
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
             user_id="A123",
-            sensory_profile={'sound':'high','light':'medium'},
-            communication_preferences={"visual": "high", "verbal": "low"},
-            stress_signals=['hand flapping', 'aggressive behavior']
-        )
-        st.session_state.graph.add_profile(profile)
+            sensory_profile={'sound':'medium','light':'very high'},
+            communication_preferences={"visual": "midium", "verbal": "hight"},
+            stress_signals=['aggressive behavior'],
+            preference = ['Blocking light through a blanket']
+            )
+        st.session_state2.graph.add_profile(profile)
 
-if 'llm' not in st.session_state:
-    st.session_state.llm = _4oMiniClient()
+if 'llm' not in st.session_state2:
+    st.session_state2.llm = _4oMiniClient()
 
-if 'agent' not in st.session_state:
-    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
+if 'agent' not in st.session_state2:
+    st.session_state2.agent = MemoryAgent(st.session_state2.llm, st.session_state2.graph)
     
 # --- Page‐specific state (state2) initialization ---
-if 'state2' not in st.session_state:
+if 'state2' not in st.session_state2:
     st.session_state.state2 = "feedback_loop"
     st.session_state.situation2 = (
         "수업 종료 후, 쉬는 시간이 되었을 때 다른 반 친구들이 과학실을 가기 위해서 이동 중이었습니다. 이때 다른 반 친구들 매우 소란스럽게 떠들며 지나갔고 일부는 서로 소리를 지르며 복도를 뛰어다녔습니다. 이때 가만히 반 친구들 대화를 하던 자폐인이 갑자기 귀를 막으며 소리를 지르기 시작했습니다."
@@ -68,11 +65,14 @@ if 'state2' not in st.session_state:
     st.session_state.loop_count2 = 0
 
 # 관리자 정의 초기 안내
-st.title("가상의 자폐인의 프로파일과 관찰 일지가 적용된 GraphDB와 O3-mini를 통한 시스템 관련 설문")
 
-st.markdown("""
-이 페이지에서는 가상의 자폐인 A의 프로파일과 관찰 일지로 구축된 GraphDB와 O3-mini를 이용한 시스템에 관한 유용성에 대한 설문을 진행하시게 됩니다.
-아래에 제시 되어 있는 관찰 일지의 중재는 해당 상황에서 자폐인을 중재하는데 성공한 중재방안입니다.
+st.title("설문 1: 일상생활에서의 자폐인 Meltdown")
+st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 Ian은 창문 가까이에서 커튼을 젖히고 바깥을 바라보고 있는데, 바깥은 매우 밝습니다.
+바깥을 바라보던 그는 잠시 후 눈에 띄게 불안한 상태에 빠지며, 울음을 터뜨리고 큰 소리로 외치며 강한 정서적 동요를 보입니다.
+그는 “Lucifer가 나를 훔쳐가려 한다”, “비가 와야 한다”고 반복적으로 말하는데, 특히 비가 오지 않으면 캠핑을 가지 못한다고 생각하고 있으며
+동시에 비가 와야 더러운 공기를 씻어낼 수 있다는 믿음을 갖고 있는 것으로 보입니다. 
+Ian은 울면서 소리를 지르고, 언어적 혼란, 강박적인 반복 발화, 감정 폭발 등의 모습을 보이고 있습니다.
+영상에 의하면 Ian은 감각적 자극 완하를 위하여 담요를 머리 끝까지 쓰는 것을 선호하는 것으로 보입니다.
 
 **자폐인 A의 프로파일**  \n가상의 자폐인 A는 소리에 매우 민감하며 광반응에는 그렇게까지 민감하지 않고 의사소통 시에는 대화만 하는 것보다는 바디 랭귀지를 섞는 것을 더 선호하는 것으로 세팅했습니다. 스트레스를 받을 시에 손을 흔들거나 혹은 공격적인 성향을 보이는 것으로 설정했습니다.
 
@@ -80,17 +80,9 @@ st.markdown("""
 
 **상황_2** : 계곡에서 가족들과 즐거운 시간을 보내고 있었으나 갑자기 낯선 가족들이 자폐인의 가족이 있는 곳으로 오면서 자폐인이 분노와 공포 반응을 보였음  \n**중재_2** : 부모나 돌봄자가 부드럽게 다가가서 가볍게 어깨를 감싸거나 손을 잡으며 '괜찮아, 안전해'라는 짧은 시각적 메시지를 전달함
 
-**GPT의 답변에 대하여 판단 하실 때 위에서 제시 된 자폐인의 프로파일과 관찰일지를 참고해주시면 감사드리겠습니다.**
+**LLM의 답변에 대하여 판단 하실 때 위에서 제시 된 자폐인의 프로파일과 관찰일지를 참고해주시면 감사드리겠습니다.**
 
-이 설문의 주 목적은 개인화된 자폐인 정보를 이용하는 GPT와의 대화를 통한 중재 방안의 개선이 얼마나 유용한지를 측정하는 것입니다.
-따라서 최소한 3번 정도의 피드백을 주시면 감사드리겠습니다.
-피드백의 형식은 없으며 자유롭게 GPT가 처음 제시한 중재방안에 대해서 지적을 해주시거나 혹은 새로운 상황을 가정하여 피드백을 주시면 됩니다.
-(ex. 자폐아가 특정 사물에 집착하여 위험한 행동을 함 --> 부모가 자폐아의 관심 유도를 위하여 손에 들고 있던 간식을 제시함 --> 자폐아가 간식에 관심을 주지 않고 계속해서 특정 사물에 집착하며 점차적으로 Meltdown 현상을 보이기 시작함)
-
-전략 개선이 완료되었다고 판단되면 "Complete"를 입력하면 설문으로 이동합니다.
-
-각 항목에 대하여 0 = 전혀 부적절, 1 = 대체로 부적절, 2 = 보통 이하, 3 = 보통 이상, 4 = 대체로 적절, 5 = 매우 적절 로 판단해주시면 감사드리겠습니다.
-원본 링크 : https://www.youtube.com/watch?v=Cflrzyu_WZk
+원본 링크 : https://www.youtube.com/watch?v=C0rdZOhet24
 """)
 
 # Expert ID input
@@ -99,15 +91,12 @@ if 'expert_id' not in st.session_state:
     if not st.session_state.expert_id:
         st.stop()
 
-if 'survey7_submitted' not in st.session_state:
-    st.session_state.survey7_submitted = False
-
 # --- Feedback loop ---
-if st.session_state.state2 == "feedback_loop":
-    strat = st.session_state.strategy2
+if st.session_state2.state2 == "feedback_loop":
+    strat = st.session_state2.strategy2
 
     st.subheader("🤖 중재 전략 피드백")
-    st.write(f"**문제 상황:** {st.session_state.situation2}")
+    st.write(f"**문제 상황:** {st.session_state2.situation2}")
     st.write(f"**원인:** {strat.get('cause')}")
     st.write("**중재 후보:**")
     for i, intr in enumerate(strat.get('intervention', []), 1):
@@ -115,109 +104,106 @@ if st.session_state.state2 == "feedback_loop":
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    feedback = st.chat_input("피드백을 입력하세요 (완료 시 'Complete' 입력):")
-    if feedback:
-        if feedback.strip().lower() == "complete":
-            st.session_state.agent.finalize(st.session_state.expert_id)
-            st.session_state.state2 = "survey"
-            st.success("전략 개선 완료. 설문으로 이동합니다.")
-            st.rerun()
-        else:
-            # history 기록
-            st.session_state.history2.append({
-                'loop': st.session_state.loop_count2 + 1,
-                'strategy': strat,
-                'feedback': feedback
-            })
-            st.session_state.loop_count2 += 1
+    if 'loop2_index' not in st.session_state2:
+        st.session_state2.loop2_index = 0
+        st.session_state2.generated_situations2 = []
+        st.session_state2.generated_strategies2 = [st.session_state2.strategy2]  # 초기 전략 포함
+        st.session_state2.user_comments2 = []
+        st.session_state2.survey2_saved = False
+        
+    if st.session_state2.loop2_index < 3:
+        idx = st.session_state2.loop2_index
+        current_strategy = st.session_state2.generated_strategies2[idx]
 
-            # GPT 재질문
-            retry_resp = st.session_state.agent.alt_ask(
-                "A123",
-                feedback,
-                strat.get('event'),
+        previous_situation = (
+            st.session_state2.situation2 if idx == 0
+            else st.session_state2.generated_situations2[idx - 1]
+        )
+        
+        intervention_txt = ""
+        for item in current_strategy.get('intervention', []):
+            intervention_txt += (
+                f"- 전략: {item.get('strategy')}\n"
+                f"  - 목적: {item.get('purpose')}\n"
+                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
+                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
             )
+   
+        prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
+                     {previous_situation}
+                     이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
+                     {intervention_txt}
+                     이 전략이 충분하지 않거나 새로운 자극 요인에 의해 실패할 수 있는 **새로운 멜트다운 상황**을 생성해주세요.
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요.
+                     """
+        new_situation = st.session_state2.llm.call_as_llm(prompt)
+        st.session_state2.generated_situations2.append(new_situation)
 
-            # JSON 파싱 및 렌더링
+        # 2. 상황 사용자에게 제시
+        st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
+        st.markdown(new_situation)
+
+        # 3. 사용자 comment 입력
+        comment = st.text_area("현재 주어진 상황을 자유롭게 요약하여 입력해주세요", key=f"comment_{idx}")
+        if st.button("다음", key=f"next_{idx}"):
+            if comment.strip() == "":
+                st.warning("댓글을 작성해주세요.")
+                st.stop()
+            st.session_state2.user_comments2.append(comment)
+            
+            # 4. MemoryAgent가 전략 생성
+            agent = st.session_state2.agent
+            caregraph = st.session_state2.graph
+            user_id = "A123"
+            situation = new_situation
+            sid, similar_events = caregraph.find_similar_events(user_id, situation)
+            user_profile = agent._profile_ctx(user_id)
+
+            if sid is not None and similar_events:
+                formatted_events = "\n".join([
+                    f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
+                    for i, e in enumerate(similar_events)
+                ])
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+            else:
+                response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
+            
+            parsed = agent._parse_json(response)
+            if parsed is None or not isinstance(parsed, dict):
+                st.error("⚠️ 중재 전략 생성 실패: JSON 파싱 오류")
+                st.stop()
             try:
-                repaired = repair_json(retry_resp)
-                parsed   = json.loads(repaired)
-                st.write(parsed)
-
-                st.header("🔄 업데이트된 중재 전략")
-                for item in parsed:
-                    if not isinstance(item, dict):
-                        continue
-
-                    for intr_raw in item.get('intervention_strategies', []):
-                        # 문자열이면 JSON으로 변환
-                        if isinstance(intr_raw, str):
-                            intr = json.loads(repair_json(intr_raw))
-                        else:
-                            intr = intr_raw
-
-                        # 전략명 표시
-                        name = intr.get("strategy_name", "proposed_strategy")
-                        st.subheader(f"• {name}")
-
-                        # 단계별 절차 표시
-                        steps = intr.get("steps", {})
-                        if isinstance(steps, dict):
-                            st.markdown("단계별 절차:")
-                            for k in sorted(steps, key=lambda x: int(x)):
-                                st.markdown(f"- {steps[k]}")
-                        elif isinstance(steps, list):
-                            st.markdown("단계별 절차:")
-                            for s in steps:
-                                st.markdown(f"- {s}")
-
-                        st.markdown("---")
-
+                action_input = parsed["action_input"]
+                first_event = list(action_input.values())[0]
+                cause = first_event.get("cause")
+                interventions = first_event.get("intervention")
+                structured = {"cause": cause, "intervention": interventions}
+                st.session_state2.generated_strategies2.append(structured)
             except Exception as e:
-                st.error(f"JSON 파싱 오류: {e}")
+                st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
+                st.stop()
 
-# --- Survey ---
-elif st.session_state.state2 == "survey":
-    st.subheader("📋 설문조사")
-    st.markdown("시스템의 유용성 및 개선 가능성에 대한 의견을 남겨주세요.")
-
-    q1 = st.slider("1. 자폐인의 개별 특성(감각/소통/스트레스 신호 등)이 전략에 반영되었다고 느끼셨습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q1")
-    q2 = st.slider("2. 과거 상황(메모리) 기록이 실제 전략 제안에 도움이 되었습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q2")
-    q3 = st.slider("3. 피드백을 반복할수록 전략이 개선되었다고 느끼셨습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q3")
-    q4 = st.slider("4. 시스템의 사용 흐름(전략 제시 - 피드백 - 반복)은 직관적이었습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q4")
-    q5 = st.slider("5. 전체적으로 문제 상황 해결에 실질적인 기여를 했다고 생각하십니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q5")
-    q6 = st.slider("6. 이 시스템을 실제 교실/상담/일반 가정 환경에 적용할 수 있다고 생각하십니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q6")
-    comment = st.text_area("7. 기타 의견 또는 개선 제안이 있다면 자유롭게 적어주세요")
-
-    if st.button("설문 제출"):
+            st.session_state2.loop2_index += 1
+            st.rerun()
+            
+    elif st.session_state2.loop2_index >= 3 and not st.session_state2.survey2_saved:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        expert_id = st.session_state.expert_id
-        user_dir = PROJECT_ROOT / "responses" / expert_id
-        user_dir.mkdir(parents=True, exist_ok=True)
-        filepath = user_dir / "caregraph_effectiveness.csv"
+        expert_id = st.session_state2.expert_id if 'expert_id' in st.session_state2 else st.session_state.expert_id
+        user_dir = f"responses/{expert_id}"
+        os.makedirs(user_dir, exist_ok=True)
+        filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
+        
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
+            for i in range(3):
+                situation = st.session_state2.generated_situations2[i].replace("\n", " ")
+                comment = st.session_state2.user_comments2[i].replace("\n", " ")
+                strategy = json.dumps(st.session_state2.generated_strategies2[i+1], ensure_ascii=False).replace("\n", " ")
+                f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
+        st.session_state2.survey2_saved = True
+        st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
 
-        if not os.path.exists(filepath):
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(
-                    "timestamp,expert_id,"
-                    "profile_reflection,"       # q1: 개별 특성 반영도
-                    "memory_helpfulness,"       # q2: 메모리 활용도
-                    "feedback_improvement,"     # q3: 전략 개선 체감도
-                    "workflow_intuitiveness,"   # q4: 사용 흐름 직관성
-                    "problem_contribution,"     # q5: 기여도
-                    "real_world_applicability," # q6: 실환경 적용 가능성
-                    "additional_comments\n"     # comment
-                )
-        with open(filepath, "a", encoding="utf-8") as f:
-            f.write(
-                f"{now},{expert_id},"
-                f"{q1},{q2},{q3},{q4},{q5},{q6},"
-                f"\"{comment}\"\n"
-            )
-        st.session_state.survey7_submitted = True
-        st.success("응답이 저장되었습니다. 감사합니다!")
-
-if st.session_state.survey7_submitted:
+if session_state2.survey2_saved:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
