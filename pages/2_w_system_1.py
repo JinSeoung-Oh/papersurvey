@@ -48,11 +48,11 @@ if 'agent' not in st.session_state2:
     
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state2:
-    st.session_state.state2 = "feedback_loop"
-    st.session_state.situation2 = (
+    st.session_state2.state = "feedback_loop"
+    st.session_state2.situation = (
         "수업 종료 후, 쉬는 시간이 되었을 때 다른 반 친구들이 과학실을 가기 위해서 이동 중이었습니다. 이때 다른 반 친구들 매우 소란스럽게 떠들며 지나갔고 일부는 서로 소리를 지르며 복도를 뛰어다녔습니다. 이때 가만히 반 친구들 대화를 하던 자폐인이 갑자기 귀를 막으며 소리를 지르기 시작했습니다."
     )
-    st.session_state.strategy2 = {
+    st.session_state2.strategy = {
         'cause': '수업 종료 후 복도를 이동하는 다른 반 친구들의 과도한 소음(큰 목소리와 발소리)으로 인해, 소리에 매우 민감한 자폐인 A가 청각적 감각 과부하를 경험하여 귀를 막고 소리를 지르는 불안 반응을 보임.',
         'intervention': [
             {'strategy': '물리적 청각 차단 (고밀도 폼 귀마개)',
@@ -61,8 +61,8 @@ if 'state2' not in st.session_state2:
                          'standard': '매일 등교 직후 1분 동안 A가 스스로 귀마개 파우치에서 꺼내 양쪽 귀에 삽입해 보는 연습을 실시해, “귀마개＝안전” 패턴을 강화'}}
         ]
     }
-    st.session_state.history2 = []
-    st.session_state.loop_count2 = 0
+    st.session_state2.history = []
+    st.session_state2.loop_count = 0
 
 # 관리자 정의 초기 안내
 
@@ -92,11 +92,11 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # --- Feedback loop ---
-if st.session_state2.state2 == "feedback_loop":
-    strat = st.session_state2.strategy2
+if st.session_state2.state == "feedback_loop":
+    strat = st.session_state2.strategy
 
     st.subheader("🤖 중재 전략 피드백")
-    st.write(f"**문제 상황:** {st.session_state2.situation2}")
+    st.write(f"**문제 상황:** {st.session_state2.situation}")
     st.write(f"**원인:** {strat.get('cause')}")
     st.write("**중재 후보:**")
     for i, intr in enumerate(strat.get('intervention', []), 1):
@@ -105,19 +105,19 @@ if st.session_state2.state2 == "feedback_loop":
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
     if 'loop2_index' not in st.session_state2:
-        st.session_state2.loop2_index = 0
-        st.session_state2.generated_situations2 = []
-        st.session_state2.generated_strategies2 = [st.session_state2.strategy2]  # 초기 전략 포함
-        st.session_state2.user_comments2 = []
-        st.session_state2.survey2_saved = False
+        st.session_state2.loop_index = 0
+        st.session_state2.generated_situations = []
+        st.session_state2.generated_strategies = [st.session_state2.strategy]  # 초기 전략 포함
+        st.session_state2.user_comments = []
+        st.session_state2.survey_saved = False
         
-    if st.session_state2.loop2_index < 3:
-        idx = st.session_state2.loop2_index
-        current_strategy = st.session_state2.generated_strategies2[idx]
+    if st.session_state2.loop_index < 3:
+        idx = st.session_state2.loop_index
+        current_strategy = st.session_state2.generated_strategies[idx]
 
         previous_situation = (
-            st.session_state2.situation2 if idx == 0
-            else st.session_state2.generated_situations2[idx - 1]
+            st.session_state2.situation if idx == 0
+            else st.session_state2.generated_situations[idx - 1]
         )
         
         intervention_txt = ""
@@ -137,7 +137,7 @@ if st.session_state2.state2 == "feedback_loop":
                      감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요.
                      """
         new_situation = st.session_state2.llm.call_as_llm(prompt)
-        st.session_state2.generated_situations2.append(new_situation)
+        st.session_state2.generated_situations.append(new_situation)
 
         # 2. 상황 사용자에게 제시
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
@@ -149,7 +149,7 @@ if st.session_state2.state2 == "feedback_loop":
             if comment.strip() == "":
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
-            st.session_state2.user_comments2.append(comment)
+            st.session_state2.user_comments.append(comment)
             
             # 4. MemoryAgent가 전략 생성
             agent = st.session_state2.agent
@@ -178,17 +178,17 @@ if st.session_state2.state2 == "feedback_loop":
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
                 structured = {"cause": cause, "intervention": interventions}
-                st.session_state2.generated_strategies2.append(structured)
+                st.session_state2.generated_strategies.append(structured)
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
 
-            st.session_state2.loop2_index += 1
+            st.session_state2.loop_index += 1
             st.rerun()
             
-    elif st.session_state2.loop2_index >= 3 and not st.session_state2.survey2_saved:
+    elif st.session_state2.loop_index >= 3 and not st.session_state2.survey_saved:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        expert_id = st.session_state2.expert_id if 'expert_id' in st.session_state2 else st.session_state.expert_id
+        expert_id = st.session_state.expert_id
         user_dir = f"responses/{expert_id}"
         os.makedirs(user_dir, exist_ok=True)
         filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
@@ -196,14 +196,14 @@ if st.session_state2.state2 == "feedback_loop":
         with open(filepath, "w", encoding="utf-8") as f:
             f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
             for i in range(3):
-                situation = st.session_state2.generated_situations2[i].replace("\n", " ")
-                comment = st.session_state2.user_comments2[i].replace("\n", " ")
-                strategy = json.dumps(st.session_state2.generated_strategies2[i+1], ensure_ascii=False).replace("\n", " ")
+                situation = st.session_state2.generated_situations[i].replace("\n", " ")
+                comment = st.session_state2.user_comments[i].replace("\n", " ")
+                strategy = json.dumps(st.session_state2.generated_strategies[i+1], ensure_ascii=False).replace("\n", " ")
                 f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
-        st.session_state2.survey2_saved = True
+        st.session_state2.survey_saved = True
         st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
 
-if session_state2.survey2_saved:
+if session_state2.survey_saved:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
