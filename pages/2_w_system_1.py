@@ -15,6 +15,9 @@ if not st.session_state.get("caregraph_effectiveness_1_init"):
         st.session_state.pop(key, None)
     st.session_state.caregraph_effectiveness_1_init = True
 
+# 비디오
+st.video("https://youtu.be/GjddtdjWaj8")
+
 from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -45,9 +48,6 @@ if 'llm' not in st.session_state:
 
 if 'agent' not in st.session_state:
     st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
-
-# 비디오
-st.video("https://youtu.be/GjddtdjWaj8")
     
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state:
