@@ -1,117 +1,223 @@
 import streamlit as st
+import json
 import datetime
+import joblib
 import os
+from json_repair import repair_json
+import re
 
-st.title("설문 1: 그랜드 케니언에서의 자폐인 Meltdown")
-st.markdown(""" 해당 영상은 자폐인이 가족과 함께 그랜드 케니언으로 여행을 간 유튜브입니다. 
-영상 속에서 자폐인의 Meltdown이 나타나는 부분은 처음 주차장에서입니다.
-주차장에서 자폐인은 빨간 자동차에서 떨어지지 않으려는 모습을 보이며 그의 형으로 보이는 사람이 자폐인을 달래는 모습을 보이고 있습니다.
-중재 방안 후보들은 각각 strategy, purpose, immediate, standard라는 요소를 가지고 있습니다.
-여기서 strategy는 중재 전략의 이름이며 purpose는 해당 중재 전략의 목적입니다.
-immediate는 그 순간에 당장 조치 할 수 있는 중재 전략이며 standard는 일반적인 수행 할 수 있는 중재 전략을 의미합니다.
+from pages.tool import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
+from my_switch import switch_page
 
-Survey_1의 목적은 LLM이 중재 전략을 얼마나 적절하게 제시 할 수 있는지 그 능력을 측정하는 것에 목적이 있습니다.
+if not st.session_state.get("caregraph_effectiveness_1_init"):
+    # 최초 진입 시에만 이전 페이지 키 삭제
+    for key in ['state2','situation2','strategy2','history2','loop_count2']:
+        st.session_state.pop(key, None)
+    st.session_state.caregraph_effectiveness_1_init = True
 
-전체 내용을 보시고자 한다면 아래 링크를 확인해주시면 감사드리겠습니다.
-해당 클립의 원본 링크 : https://www.youtube.com/watch?v=3B42Sev56xo
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# --- Helper functions ---
+def load_graph(path: str) -> CareGraph:
+    graph = joblib.load(path)
+    graph.llm = _4oMiniClient()
+    return graph
+
+# --- Session initialization ---
+if 'graph' not in st.session_state:
+    # Initialize or load CareGraph and profile
+    if os.path.exists("../caregraph_full.pkl"):
+        st.session_state.graph = load_graph("../caregraph_full.pkl")
+    else:
+        st.session_state.graph = CareGraph()
+        # 관리자 정의 초기 사용자 프로필
+        profile = UserProfile(
+            user_id="A123",
+            sensory_profile={'sound':'high','light':'medium'},
+            communication_preferences={"visual": "high", "verbal": "low"},
+            stress_signals=['hand flapping', 'aggressive behavior']
+        )
+        st.session_state.graph.add_profile(profile)
+
+if 'llm' not in st.session_state:
+    st.session_state.llm = _4oMiniClient()
+
+if 'agent' not in st.session_state:
+    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
+    
+# --- Page‐specific state (state2) initialization ---
+if 'state2' not in st.session_state:
+    st.session_state.state2 = "feedback_loop"
+    st.session_state.situation2 = (
+        "수업 종료 후, 쉬는 시간이 되었을 때 다른 반 친구들이 과학실을 가기 위해서 이동 중이었습니다. 이때 다른 반 친구들 매우 소란스럽게 떠들며 지나갔고 일부는 서로 소리를 지르며 복도를 뛰어다녔습니다. 이때 가만히 반 친구들 대화를 하던 자폐인이 갑자기 귀를 막으며 소리를 지르기 시작했습니다."
+    )
+    st.session_state.strategy2 = {
+        'cause': '수업 종료 후 복도를 이동하는 다른 반 친구들의 과도한 소음(큰 목소리와 발소리)으로 인해, 소리에 매우 민감한 자폐인 A가 청각적 감각 과부하를 경험하여 귀를 막고 소리를 지르는 불안 반응을 보임.',
+        'intervention': [
+            {'strategy': '물리적 청각 차단 (고밀도 폼 귀마개)',
+             'purpose': '복도에서 튀어나오는 큰 소음으로 인한 자폐인의 감각 과부하를 즉시 차단',
+             'example': {'immediate': '돌봄교사가 A의 손목을 부드럽게 잡고 미리 합의된 ‘귀옆 두 번 톡톡’ 제스처를 보낸 뒤, 책상 서랍에서 꺼낸 고밀도 폼 귀마개를 A가 손쉽게 양쪽 귀에 삽입하도록 유도',
+                         'standard': '매일 등교 직후 1분 동안 A가 스스로 귀마개 파우치에서 꺼내 양쪽 귀에 삽입해 보는 연습을 실시해, “귀마개＝안전” 패턴을 강화'}}
+        ]
+    }
+    st.session_state.history2 = []
+    st.session_state.loop_count2 = 0
+
+# 관리자 정의 초기 안내
+st.title("가상의 자폐인의 프로파일과 관찰 일지가 적용된 GraphDB와 O3-mini를 통한 시스템 관련 설문")
+
+st.markdown("""
+이 페이지에서는 가상의 자폐인 A의 프로파일과 관찰 일지로 구축된 GraphDB와 O3-mini를 이용한 시스템에 관한 유용성에 대한 설문을 진행하시게 됩니다.
+아래에 제시 되어 있는 관찰 일지의 중재는 해당 상황에서 자폐인을 중재하는데 성공한 중재방안입니다.
+
+**자폐인 A의 프로파일**  \n가상의 자폐인 A는 소리에 매우 민감하며 광반응에는 그렇게까지 민감하지 않고 의사소통 시에는 대화만 하는 것보다는 바디 랭귀지를 섞는 것을 더 선호하는 것으로 세팅했습니다. 스트레스를 받을 시에 손을 흔들거나 혹은 공격적인 성향을 보이는 것으로 설정했습니다.
+
+**자폐인 A의 관찰 일지**  \n**상황_1** : 붐비고 시끄러운 슈퍼마켓 환경, 즉 많은 사람들과 소음, 낯선 자극들로 인한 감각 과부하가 원인으로 작용하여 자폐인이 불편함을 느끼고, 부모에게 향하는 항의 및 신체적 저항 행동(짜증 행동)을 나타냄  \n**중재_1** : 부모가 가능한 한 조용하고 밝기가 낮은 구역으로 즉시 이동시켜 감각 자극을 줄임
+
+**상황_2** : 계곡에서 가족들과 즐거운 시간을 보내고 있었으나 갑자기 낯선 가족들이 자폐인의 가족이 있는 곳으로 오면서 자폐인이 분노와 공포 반응을 보였음  \n**중재_2** : 부모나 돌봄자가 부드럽게 다가가서 가볍게 어깨를 감싸거나 손을 잡으며 '괜찮아, 안전해'라는 짧은 시각적 메시지를 전달함
+
+**GPT의 답변에 대하여 판단 하실 때 위에서 제시 된 자폐인의 프로파일과 관찰일지를 참고해주시면 감사드리겠습니다.**
+
+이 설문의 주 목적은 개인화된 자폐인 정보를 이용하는 GPT와의 대화를 통한 중재 방안의 개선이 얼마나 유용한지를 측정하는 것입니다.
+따라서 최소한 3번 정도의 피드백을 주시면 감사드리겠습니다.
+피드백의 형식은 없으며 자유롭게 GPT가 처음 제시한 중재방안에 대해서 지적을 해주시거나 혹은 새로운 상황을 가정하여 피드백을 주시면 됩니다.
+(ex. 자폐아가 특정 사물에 집착하여 위험한 행동을 함 --> 부모가 자폐아의 관심 유도를 위하여 손에 들고 있던 간식을 제시함 --> 자폐아가 간식에 관심을 주지 않고 계속해서 특정 사물에 집착하며 점차적으로 Meltdown 현상을 보이기 시작함)
+
+전략 개선이 완료되었다고 판단되면 "Complete"를 입력하면 설문으로 이동합니다.
 
 각 항목에 대하여 0 = 전혀 부적절, 1 = 대체로 부적절, 2 = 보통 이하, 3 = 보통 이상, 4 = 대체로 적절, 5 = 매우 적절 로 판단해주시면 감사드리겠습니다.
-
-설문 조사가 끝나면 반드시 제출 버튼을 눌러주시길 바라겠습니다. 누르셔야지만 다음 페이지로 이동하실 수 있으십니다.
 """)
 
+# Expert ID input
+if 'expert_id' not in st.session_state:
+    st.session_state.expert_id = st.text_input("응답자 ID를 입력해주세요.")
+    if not st.session_state.expert_id:
+        st.stop()
 
-# ID가 없으면 작성하라고 유도
-if "expert_id" not in st.session_state or not st.session_state.expert_id:
-    st.warning("먼저 홈에서 응답자 ID를 입력해 주세요.")
-    st.stop()
+if 'survey7_submitted' not in st.session_state:
+    st.session_state.survey7_submitted = False
 
-if 'survey1_submitted' not in st.session_state:
-    st.session_state.survey1_submitted = False
+# --- Feedback loop ---
+if st.session_state.state2 == "feedback_loop":
+    strat = st.session_state.strategy2
 
-# 비디오
-st.video("https://youtu.be/kBL3zx4MTHA")
+    st.subheader("🤖 중재 전략 피드백")
+    st.write(f"**문제 상황:** {st.session_state.situation2}")
+    st.write(f"**원인:** {strat.get('cause')}")
+    st.write("**중재 후보:**")
+    for i, intr in enumerate(strat.get('intervention', []), 1):
+        st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
+        st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
+        st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-# 해결 방안 후보들
-interventions = [
-    """1. **strategy**: 환경적 자극 조절  \n**purpose**: 감각 과부하를 예방하고 자폐인이 보다 안정된 환경에서 상황을 받아들일 수 있도록 돕기 위함  \n**immediate**: 문제가 발생하면 빨간 밴이나 기타 시각적 자극 요소로부터 거리를 두도록 유도하며, 조용한 구역으로 천천히 이동시킴  \n**standard**: 야외 활동 전 또는 활동 중에 불필요한 자극(강한 빛, 소음 등)을 줄일 수 있는 도구(예: 선글라스, 귀마개)와 함께, 미리 정해진 조용한 휴식 구역을 안내""",
-    """2. **strategy**: 시각적 지원 제공  \n**purpose**: 자폐인의 시각 의사소통 선호를 활용하여 상황 예측 가능성을 높이고, 안정감을 제공하기 위함  \n**immediate**: 불안 징후가 보이면 간단한 그림 카드나 사진을 보여주며 현재 상황과 앞으로의 행동을 간략히 설명  \n**standard**: 사전에 야외 활동 스케줄이나 사회 이야기를 준비해 상황 전개를 시각적으로 안내하고, 자폐인이 이해할 수 있도록 반복적으로 활용"""
-]
+    feedback = st.chat_input("피드백을 입력하세요 (완료 시 'Complete' 입력):")
+    if feedback:
+        if feedback.strip().lower() == "complete":
+            st.session_state.agent.finalize(st.session_state.expert_id)
+            st.session_state.state2 = "survey"
+            st.success("전략 개선 완료. 설문으로 이동합니다.")
+            st.rerun()
+        else:
+            # history 기록
+            st.session_state.history2.append({
+                'loop': st.session_state.loop_count2 + 1,
+                'strategy': strat,
+                'feedback': feedback
+            })
+            st.session_state.loop_count2 += 1
 
-st.subheader("💡 제안된 해결 방안들에 대해 각각 평가해 주세요.")
+            # GPT 재질문
+            retry_resp = st.session_state.agent.alt_ask(
+                "A123",
+                feedback,
+                strat.get('event'),
+            )
 
-ratings = {}
-for i, intervention in enumerate(interventions):
-    st.markdown(intervention.strip())
-    # 1) 적합성
-    suitability = st.slider(
-        "→ 제안된 LLM 기반 중재 방안이 실제 임상·현장 상황에서 자폐인 중재에 적절하다고 생각하십니까? (0~5)",
-        0, 5, key=f"suitability_{i}"
-    )
-    # 2) 효과 예측
-    effectiveness = st.slider(
-        "→ 해당 방안을 적용했을 때 실제 개입 효과를 기대할 수 있다고 보십니까? (0~5)",
-        0, 5, key=f"effectiveness_{i}"
-    )
-    # 3) 신뢰성
-    reliability = st.slider(
-        "→ 제안된 내용이 충분히 근거 있고 일관성 있다고 느끼십니까? (0~5)",
-        0, 5, key=f"reliability_{i}"
-    )
+            # JSON 파싱 및 렌더링
+            try:
+                repaired = repair_json(retry_resp)
+                parsed   = json.loads(repaired)
+                st.write(parsed)
 
-    ratings[intervention] = {
-        "suitability": suitability,
-        "effectiveness": effectiveness,
-        "reliability": reliability
-    }
-    st.markdown("---")
+                st.header("🔄 업데이트된 중재 전략")
+                for item in parsed:
+                    if not isinstance(item, dict):
+                        continue
 
-clarity = st.slider(
-    "→ LLM의 출력이 이해하기 쉽고 명료합니까? (0~5)",
-    0, 5, key="clarity"
-)
-overall_satisfaction = st.slider(
-    "→ 전체적으로 본 LLM 기반 중재 방안에 얼마나 만족하십니까? (0~5)",
-    0, 5, key="overall_satisfaction"
-)
+                    for intr_raw in item.get('intervention_strategies', []):
+                        # 문자열이면 JSON으로 변환
+                        if isinstance(intr_raw, str):
+                            intr = json.loads(repair_json(intr_raw))
+                        else:
+                            intr = intr_raw
 
-# 추가 의견 (선택사항)
-comments = st.text_area(
-    "전체적인 의견 또는 피드백 (선택사항)"
-)
+                        # 전략명 표시
+                        name = intr.get("strategy_name", "proposed_strategy")
+                        st.subheader(f"• {name}")
 
-# 제출
-if st.button("제출"):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    expert_id = st.session_state.expert_id
-    user_dir = f"responses/{expert_id}"
-    os.makedirs(user_dir, exist_ok=True)
-    filepath = os.path.join(user_dir, "survey1.csv")
+                        # 단계별 절차 표시
+                        steps = intr.get("steps", {})
+                        if isinstance(steps, dict):
+                            st.markdown("단계별 절차:")
+                            for k in sorted(steps, key=lambda x: int(x)):
+                                st.markdown(f"- {steps[k]}")
+                        elif isinstance(steps, list):
+                            st.markdown("단계별 절차:")
+                            for s in steps:
+                                st.markdown(f"- {s}")
 
-    # CSV 헤더 추가 (최초 생성 시에만)
-    if not os.path.exists(filepath):
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("timestamp,expert_id,intervention,suitability,effectiveness,reliability,clarity,overall_satisfaction,comments\n")
+                        st.markdown("---")
 
-    # 응답 저장
-    with open(filepath, "a", encoding="utf-8") as f:
-        for intervention, scores in ratings.items():
-            # ratings[intervention] == {"suitability":…, "effectiveness":…, "reliability":…}
+            except Exception as e:
+                st.error(f"JSON 파싱 오류: {e}")
+
+# --- Survey ---
+elif st.session_state.state2 == "survey":
+    st.subheader("📋 설문조사")
+    st.markdown("시스템의 유용성 및 개선 가능성에 대한 의견을 남겨주세요.")
+
+    q1 = st.slider("1. 자폐인의 개별 특성(감각/소통/스트레스 신호 등)이 전략에 반영되었다고 느끼셨습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q1")
+    q2 = st.slider("2. 과거 상황(메모리) 기록이 실제 전략 제안에 도움이 되었습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q2")
+    q3 = st.slider("3. 피드백을 반복할수록 전략이 개선되었다고 느끼셨습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q3")
+    q4 = st.slider("4. 시스템의 사용 흐름(전략 제시 - 피드백 - 반복)은 직관적이었습니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q4")
+    q5 = st.slider("5. 전체적으로 문제 상황 해결에 실질적인 기여를 했다고 생각하십니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q5")
+    q6 = st.slider("6. 이 시스템을 실제 교실/상담/일반 가정 환경에 적용할 수 있다고 생각하십니까? (0=전혀 아니다, 5=매우 그렇다)", 0, 5, key="q6")
+    comment = st.text_area("7. 기타 의견 또는 개선 제안이 있다면 자유롭게 적어주세요")
+
+    if st.button("설문 제출"):
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expert_id = st.session_state.expert_id
+        user_dir = PROJECT_ROOT / "responses" / expert_id
+        user_dir.mkdir(parents=True, exist_ok=True)
+        filepath = user_dir / "caregraph_effectiveness.csv"
+
+        if not os.path.exists(filepath):
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(
+                    "timestamp,expert_id,"
+                    "profile_reflection,"       # q1: 개별 특성 반영도
+                    "memory_helpfulness,"       # q2: 메모리 활용도
+                    "feedback_improvement,"     # q3: 전략 개선 체감도
+                    "workflow_intuitiveness,"   # q4: 사용 흐름 직관성
+                    "problem_contribution,"     # q5: 기여도
+                    "real_world_applicability," # q6: 실환경 적용 가능성
+                    "additional_comments\n"     # comment
+                )
+        with open(filepath, "a", encoding="utf-8") as f:
             f.write(
                 f"{now},{expert_id},"
-                f"\"{intervention}\","
-                f"{scores['suitability']},{scores['effectiveness']},{scores['reliability']},"
-                f"{clarity},{overall_satisfaction},"
-                f"\"{comments}\"\n"
+                f"{q1},{q2},{q3},{q4},{q5},{q6},"
+                f"\"{comment}\"\n"
             )
-    st.session_state.survey1_submitted = True
-    st.success("응답이 저장되었습니다. 감사합니다!")
+        st.session_state.survey7_submitted = True
+        st.success("응답이 저장되었습니다. 감사합니다!")
 
-if st.session_state.survey1_submitted:
+if st.session_state.survey7_submitted:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
-            st.switch_page("pages/1_servey.py")       # pages/home.py (확장자 제외)
+            st.switch_page("pages/6_caregraph_effectiveness.py")       # pages/home.py (확장자 제외)
     with col2:
         if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/3_survey.py")    # pages/survey2.py (확장자 제외)
+            st.switch_page("pages/8_caregraph_effectiveness_3.py")
