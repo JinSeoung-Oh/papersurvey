@@ -69,4 +69,4 @@ with col1:
         st.switch_page("Home.py")
 with col2:
     if st.button("다음 페이지 ▶"):
-        st.switch_page("pages/1_survey_1.py")
+        st.switch_page("pages/1_wo_system_1.py")
