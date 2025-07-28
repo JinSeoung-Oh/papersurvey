@@ -7,7 +7,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from pages.tool import _4oMiniClient
+from pages.tools import _4oMiniClient
 
 st.title("상황 2: 등교길에서 발생한 자폐인 Meltdown")
 st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 자폐아동이 가족들과 함께 학교에 등교하고 있는 모습으로 시작됩니다.
