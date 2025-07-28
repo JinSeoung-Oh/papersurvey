@@ -30,7 +30,7 @@ if 'survey3_submitted' not in st.session_state:
     st.session_state.survey3_submitted = False
 
 # 비디오
-st.video("https://youtu.be/5Cfc2oGZAbI")
+st.video("https://youtube.com/shorts/uDWzTxF8qeY")
 
 # 해결 방안 후보들
 interventions = [
