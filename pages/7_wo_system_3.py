@@ -1,117 +1,115 @@
+from pathlib import Path
 import streamlit as st
 import datetime
-from my_switch import switch_page
 import os
 
-st.title("설문 3: 자폐인의 공격적인 모습")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-st.markdown("""
-해당 영상은 자폐인이 집에서 가족과 함께 있는 모습을 담은 유튜브입니다. 
-자폐인이 어머니에게 안겨 있지만 자폐인은 자신의 뒷통수로 어머니를 연속해서 가격하는 모습을 보이고 있습니다.
-중재 방안 후보들은 각각 strategy, purpose, immediate, standard라는 요소를 가지고 있습니다.
-여기서 strategy는 중재 전략의 이름이며 purpose는 해당 중재 전략의 목적입니다.
-immediate는 그 순간에 당장 조치 할 수 있는 중재 전략이며 standard는 일반적인 수행 할 수 있는 중재 전략을 의미합니다.
-
-Survey_3의 목적은 LLM이 중재 전략을 얼마나 적절하게 제시 할 수 있는지 그 능력을 측정하는 것에 목적이 있습니다.
-
-전체 내용을 보시고자 한다면 아래 링크를 확인해주시면 감사드리겠습니다..
-해당 클립의 원본 링크 : https://www.youtube.com/shorts/vXB3Wbph2Sk
-
-각 항목에 대하여 0 = 전혀 부적절, 1 = 대체로 부적절, 2 = 보통 이하, 3 = 보통 이상, 4 = 대체로 적절, 5 = 매우 적절 로 판단해주시면 감사드리겠습니다.
-설문이 끝나시면 밑에 제출 버튼을 누르셔야 다음 페이지로 이동이 가능합니다.
+st.title("상황 1: 일상생활에서의 자폐인 Meltdown")
+st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 가족들이 패밀리 레스토랑을 방문한 것으로 시작됩니다. 
+사촌의 생일이라서 모인거라고 하는데 자폐 아동이 화를 내면서 떼를 쓰기 시작합니다.
+영상에서는 패밀리 레스토랑에서의 피로감과 배고품으로 인하여 멜트 다운이 일어난 것 같다는 언급을 합니다.
+자폐아동이 계속해서 엄머에게 떼를 쓰면서 엄마가 들고 있는 메뉴판을 뺏으려고 하고 
+뜻대로 되지 않자 책상을 치거나 엄마한테 주먹질을 하는 모습을 보이고 있습니다.
 """)
+
+if 'llm' not in st.session_state7:
+    st.session_state7.llm = _4oMiniClient()
 
 # ID가 없으면 작성하라고 유도
 if "expert_id" not in st.session_state or not st.session_state.expert_id:
     st.warning("먼저 홈에서 응답자 ID를 입력해 주세요.")
     st.stop()
 
-if 'survey3_submitted' not in st.session_state:
-    st.session_state.survey3_submitted = False
+if 'survey_submitted' not in st.session_state7:
+    st.session_state7.survey_submitted = False
 
 # 비디오
-st.video("https://youtube.com/shorts/uDWzTxF8qeY")
+st.video("https://youtu.be/GjddtdjWaj8")
 
-# 해결 방안 후보들
-interventions = [
-    """1. **strategy**: 감각 자극 조절  \n**purpose**: 과도한 감각 자극을 완화하여 불안감을 줄이고 안정된 행동을 유도  \n**immediate**: 즉시 조용한 공간으로 이동하여 목소리 톤을 낮추고 부드럽게 대화하며 감각 자극을 줄인다.  \n**standard**: 교실 내 조용한 구역을 마련하고, 조명 및 소리 조절 도구(소음 차단 헤드폰, 간접 조명 등)를 활용하여 일상적인 감각 환경을 조절한다.""",
-    """2. **strategy**: 비폭력적 의사소통 지원  \n**purpose**: 자폐 아동이 자신의 감정을 말이나 다른 수단으로 표현할 수 있도록 돕고, 물리적 행동 대신 적절한 의사소통 방법을 사용할 수 있도록 지도  \n**immediate**: 상황 발생 시, 부드럽고 침착한 어조로 아이에게 '말로 표현해봐'라며 유도한다.  \n**standard**: 시각 자료(예: 그림 카드, 사진 일람표)와 함께 정기적으로 의사소통 교육을 실시하여 감정 표현과 요구 전달 방법을 연습시킨다""",
-    """3. **strategy**: 심리적 안정 제공  \n**purpose**: 아동이 심리적으로 안정감을 회복하고 감정을 조절할 수 있도록 지원  \n**immediate**: 아동이 울거나 소리칠 때 부드럽게 안아주거나, 차분한 목소리로 '괜찮아'라고 말하며 즉각적 안정을 도모한다  \n**standard**: 정기적인 휴식 시간과 안정 영역(안전 구역, 쿠션 코너 등)을 마련해 아동이 자율적으로 휴식을 취할 수 있도록 환경을 조성한다""",
-    """4. **strategy**: 시각적 지원 활용  \n**purpose**: 어려운 감정 상황에서 아동에게 명확한 시각 자료를 통해 상황을 해석하고 예측할 수 있도록 도움  \n**immediate**: 문제가 발생할 때 즉시 시각 자료(예: 감정 카드, 행동 차트)를 보여주어 아동이 현재 상태를 인식하도록 유도한다.  \n**standard**: 일상 수업에 시각 지원 도구(타임 타이블, 일과표 등)를 포함시켜, 아동이 예측 가능한 일상 패턴을 인식하고 전반적인 불안을 감소시킨다""",
-    """5. **strategy**: 사회적 상호작용 교육  \n**purpose**: 아동들이 서로의 신체적 경계를 이해하고 존중할 수 있도록 사회적 기술을 향상시키기 위함  \n**immediate**: 즉각 상황 발생 시, 부드럽게 아동들에게 서로의 거리를 유지하도록 안내하고 차분하게 설명한다  \n**standard**: 정기적으로 역할 놀이 및 모형 활동을 통해 ‘적절한 신체 접촉’에 대한 시각 자료와 함께 교육을 실시한다.""",
-    """6. **strategy**: 구조화된 환경 설정  \n**purpose**: 신체 접촉으로 인한 오해를 방지하고, 아동들이 안전하게 상호작용할 수 있는 체계적인 환경을 조성하기 위함  \n**immediate**: 문제가 발생할 경우, 즉시 물리적 거리를 두도록 성인이 중재하며 안전한 공간으로 유도한다  \n**standard**: '교실 배치를 변경하여 아동들 간 거리를 자연스럽게 확보하고, 소그룹 활동을 통해 상대방과의 상호작용 규칙을 명확히 한다."""
-]
+# 멜트다운 초기 상황에 대한 첫 중재 방안 입력
+if "comments_history" not in st.session_stat7e:
+    st.session_state7.comments_history = []
 
-st.subheader("💡 제안된 해결 방안들에 대해 각각 평가해 주세요.")
+if "generated_situations" not in st.session_state7:
+    st.session_state7.generated_situations = []
 
-ratings = {}
-for i, intervention in enumerate(interventions):
-    st.markdown(intervention.strip())
-    # 1) 적합성
-    suitability = st.slider(
-        "→ 제안된 LLM 기반 중재 방안이 실제 임상·현장 상황에서 자폐인 중재에 적절하다고 생각하십니까? (0~5)",
-        0, 5, key=f"suitability_{i}"
-    )
-    # 2) 효과 예측
-    effectiveness = st.slider(
-        "→ 해당 방안을 적용했을 때 실제 개입 효과를 기대할 수 있다고 보십니까? (0~5)",
-        0, 5, key=f"effectiveness_{i}"
-    )
-    # 3) 신뢰성
-    reliability = st.slider(
-        "→ 제안된 내용이 충분히 근거 있고 일관성 있다고 느끼십니까? (0~5)",
-        0, 5, key=f"reliability_{i}"
-    )
+if "loop_index" not in st.session_state7:
+    st.session_state7.loop_index = 0
 
-    ratings[intervention] = {
-        "suitability": suitability,
-        "effectiveness": effectiveness,
-        "reliability": reliability
-    }
-    st.markdown("---")
+# 초기 질문만 출력
+if st.session_state7.loop_index == 0:
+    comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment")
+    if st.button("다음"):
+        if comment.strip() == "":
+            st.warning("중재 방안을 입력해주세요.")
+            st.stop()
+        st.session_state7.comments_history.append(comment)
+        st.session_state7.loop_index += 1
+        st.rerun()
 
-clarity = st.slider(
-    "→ LLM의 출력이 이해하기 쉽고 명료합니까? (0~5)",
-    0, 5, key="clarity"
-)
-overall_satisfaction = st.slider(
-    "→ 전체적으로 본 LLM 기반 중재 방안에 얼마나 만족하십니까? (0~5)",
-    0, 5, key="overall_satisfaction"
-)
+# 반복 상황 생성 루프
+elif 1 <= st.session_state7.loop_index <= 3:
+    idx = st.session_state7.loop_index
 
-# 추가 의견 (선택사항)
-comments = st.text_area(
-    "전체적인 의견 또는 피드백 (선택사항)"
-)
+    # 상황 생성
+    if len(st.session_state7.generated_situations) < idx:
+        user_comment = st.session_state7.comments_history[-1]
+        previous_situation = st.session_state7.generated_situations[-1] if st.session_state7.generated_situations else "초기 멜트다운: 커튼 밖의 밝은 빛 자극으로 인하여 멜트 다운을 일으킴. 소리를 지르고 울면서 불안한 모습을 보이고 있음"
+        prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
+                     {previous_situation}
+                     이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
+                     {user_comment}
+                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요.
+                  """
+        new_situation = st.session_state7.llm.call_as_llm(prompt)
+        st.session_state7.generated_situations.append(new_situation)
 
-# 제출
-if st.button("제출"):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    expert_id = st.session_state.expert_id
-    user_dir = f"responses/{expert_id}"
-    os.makedirs(user_dir, exist_ok=True)
-    filepath = os.path.join(user_dir, "survey1.csv")
+    # 새로운 상황 제시 및 중재 방안 입력
+    st.markdown(f"### 새로 생성된 상황 {idx}")
+    st.markdown(st.session_state7.generated_situations[idx - 1])
 
-    # CSV 헤더 추가 (최초 생성 시에만)
-    if not os.path.exists(filepath):
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("timestamp,expert_id,intervention,suitability,effectiveness,reliability,usability,clarity,overall_satisfaction,comments\n")
+    new_comment = st.text_area("이 상황에 적절한 중재 방안을 입력해주세요", key=f"comment_{idx}")
+    if st.button("다음", key=f"next_{idx}"):
+        if new_comment.strip() == "":
+            st.warning("중재 방안을 입력해주세요.")
+            st.stop()
+        st.session_state7.comments_history.append(new_comment)
+        st.session_state7.loop_index += 1
+        st.rerun()
 
-    # 응답 저장
-    with open(filepath, "a", encoding="utf-8") as f:
-        for intervention, scores in ratings.items():
-            # ratings[intervention] == {"suitability":…, "effectiveness":…, "reliability":…}
-            f.write(
-                f"{now},{expert_id},"
-                f"\"{intervention}\","
-                f"{scores['suitability']},{scores['effectiveness']},{scores['reliability']},"
-                f"{clarity},{overall_satisfaction},"
-                f"\"{comments}\"\n"
-            )
-    st.session_state.survey3_submitted = True
-    st.success("응답이 저장되었습니다. 감사합니다!")
 
-if st.session_state.survey3_submitted:
+elif st.session_state7.loop_index > 3:
+    st.success("3회의 상황 생성 및 중재 응답이 완료되었습니다. 감사합니다.")
+
+    if not st.session_state7.survey_submitted:
+        # 자동 저장
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expert_id = st.session_state.expert_id
+        user_dir = f"responses/{expert_id}"
+        os.makedirs(user_dir, exist_ok=True)
+        filepath = os.path.join(user_dir, "survey1_loop.csv")
+
+        # 파일이 없다면 헤더 추가
+        if not os.path.exists(filepath):
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("timestamp,expert_id,loop_index,situation,intervention\n")
+
+        # 상황 + 중재 방안 저장
+        with open(filepath, "a", encoding="utf-8") as f:
+            for i, (situation, intervention) in enumerate(zip(st.session_state7.generated_situations, st.session_state7.comments_history[1:]), start=1):
+                f.write(
+                    f"{now},{expert_id},{i},"
+                    f"\"{situation.strip()}\","
+                    f"\"{intervention.strip()}\"\n"
+                )
+
+        st.session_state7.survey_submitted = True
+        st.info("응답이 저장되었습니다. 감사합니다.")
+
+
+if st.session_state7.survey_submitted:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
