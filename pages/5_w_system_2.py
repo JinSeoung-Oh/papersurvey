@@ -99,7 +99,7 @@ if st.session_state.state == "feedback_loop":
     strat = st.session_state.strategy
 
     st.subheader("🤖 중재 전략 피드백")
-    st.write(f"**문제 상황:** {st.session_state5.situation}")
+    st.write(f"**문제 상황:** {st.session_state.situation}")
     st.write(f"**원인:** {strat.get('cause')}")
     st.write("**중재 후보:**")
     for i, intr in enumerate(strat.get('intervention', []), 1):
@@ -107,7 +107,7 @@ if st.session_state.state == "feedback_loop":
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    if 'loop2_index' not in st.session_state2:
+    if 'loop2_index' not in st.session_state:
         st.session_state.loop_index = 0
         st.session_state.generated_situations = []
         st.session_state.generated_strategies = [st.session_state.strategy]  # 초기 전략 포함
@@ -152,7 +152,7 @@ if st.session_state.state == "feedback_loop":
             if comment.strip() == "":
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
-            st.session_state5.user_comments.append(comment)
+            st.session_state.user_comments.append(comment)
             
             # 4. MemoryAgent가 전략 생성
             agent = st.session_state.agent
