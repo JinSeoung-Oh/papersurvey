@@ -206,7 +206,7 @@ if st.session_state.state == "feedback_loop":
         st.session_state.survey_saved = True
         st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
 
-if session_state.survey_saved:
+if st.session_state.survey_saved:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
