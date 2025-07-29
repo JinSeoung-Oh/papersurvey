@@ -15,6 +15,7 @@ sys.path.append(str(PROJECT_ROOT))
 from pages.tools import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 
 PKL_FILE = PROJECT_ROOT / "caregraph_full.pkl"
+sys.modules["__main__"].CareGraph = CareGraph
 
 st.video("https://youtu.be/GjddtdjWaj8")
 
