@@ -172,10 +172,12 @@ if st.session_state.state == "feedback_loop":
             else:
                 response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
             
-            parsed = agent._parse_json(response)
-            if parsed is None or not isinstance(parsed, dict):
+            repaired = repair_json(response)
+            try:
+                parsed = json.loads(repaired)
+            except json.JSONDecodeError as e:
                 st.error("⚠️ 중재 전략 생성 실패: JSON 파싱 오류")
-                st.stop()
+                st.stop()                
             try:
                 action_input = parsed["action_input"]
                 first_event = list(action_input.values())[0]
@@ -186,6 +188,17 @@ if st.session_state.state == "feedback_loop":
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
+
+            st.markdown("### 🎯 제안된 중재 전략")
+            st.markdown(f"- **원인:** {cause}")
+            if interventions:
+                for i, intr in enumerate(interventions, start=1):
+                    st.markdown(f"**전략 {i}:**")
+                    st.markdown(f"- 전략: {intr.get('strategy')}")
+                    st.markdown(f"- 목적: {intr.get('purpose')}")
+                    example = intr.get('example')
+                    if example:
+                        st.markdown(f"- 예시: {example}")
 
             st.session_state.loop_index += 1
             st.rerun()
