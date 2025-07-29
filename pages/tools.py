@@ -298,6 +298,7 @@ class MemoryAgent:
             f"학생 프로필:\n"
             f"- 감각 프로필: {attrs.get('sensory_profile')}\n"
             f"- 의사소통 선호: {attrs.get('comm_prefs')}\n"
+            f"- 선호 완화 전략: {attrs.get('preference')}\n"
             f"- 스트레스 신호: {attrs.get('stress_signals')}\n\n"
         )
 
@@ -315,6 +316,8 @@ class MemoryAgent:
             "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 과거 중재에 성공한적이 있는 {similar_events}를 참고하여 {user_input}에 알맞게 전략 수립 후에 제시해주세요." +
             f"당신이 수립한 전략은 일반적인 전략이 아닌 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
+            "immediate에는 그 상황에서 즉각적으로 할 수 있는 현실적인 것이어야만 합니다." + 
+            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요."+
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
@@ -353,6 +356,8 @@ class MemoryAgent:
             "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 {user_feedback}을 최우선으로 고려하여 전략 수립 후에 제시해주세요." +
             f"당신이 수립한 전략은 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
+            "immediate에는 그 상황에서 즉각적으로 할 수 있는 현실적인 것이어야만 합니다." + 
+            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요."+
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
@@ -436,8 +441,8 @@ class MemoryAgent:
                 idx = int(choice) - 1
                 chosen = interventions[idx]
             except (ValueError, IndexError):
-                print("잘못된 입력입니다. 첫 번째 전략으로 기록합니다.")
-                chosen = interventions[0]
+                print("저장 하지 않음")
+                continue
 
             # 구조화된 저장 로직
             self.cg.add_cause(user_id, sid, cause)
