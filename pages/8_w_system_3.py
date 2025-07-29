@@ -100,7 +100,7 @@ if st.session_state.state == "feedback_loop":
     strat = st.session_state.strategy
 
     st.subheader("🤖 중재 전략 피드백")
-    st.write(f"**문제 상황:** {st.session_state8.situation}")
+    st.write(f"**문제 상황:** {st.session_state.situation}")
     st.write(f"**원인:** {strat.get('cause')}")
     st.write("**중재 후보:**")
     for i, intr in enumerate(strat.get('intervention', []), 1):
