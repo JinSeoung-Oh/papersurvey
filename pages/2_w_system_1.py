@@ -36,7 +36,7 @@ if 'agent' not in st.session_state:
 # --- Session initialization ---
 if 'graph' not in st.session_state:
     # Initialize or load CareGraph and profile
-    if PKL_FILE.exists()::
+    if PKL_FILE.exists():
         st.session_state.graph = load_graph(str(PKL_FILE))
     else:
         st.session_state.graph = CareGraph(st.session_state.llm, st.session_state.agent)
