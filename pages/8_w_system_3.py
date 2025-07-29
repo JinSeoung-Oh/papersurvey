@@ -133,7 +133,7 @@ if st.session_state8.state == "feedback_loop":
                      이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
                      {intervention_txt}
                      이 전략이 충분하지 않거나 새로운 자극 요인에 의해 실패할 수 있는 **새로운 멜트다운 상황**을 생성해주세요.
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요.
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
                      """
         new_situation = st.session_state8.llm.call_as_llm(prompt)
         st.session_state8.generated_situations.append(new_situation)
