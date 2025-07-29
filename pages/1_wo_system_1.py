@@ -68,7 +68,7 @@ elif 1 <= st.session_state.loop_index <= 3:
                      이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
                      {user_comment}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요.
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요.
                   """
         new_situation = st.session_state.llm.call_as_llm(prompt)
         st.session_state.generated_situations.append(new_situation)
