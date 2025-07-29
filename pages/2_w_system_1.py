@@ -139,8 +139,9 @@ if st.session_state.state == "feedback_loop":
                      이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
                      {intervention_txt}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요.
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. **억지로 상황을 만들어 복잡하게 하지 마세요**
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
                      """
         new_situation = st.session_state.llm.call_as_llm(prompt)
         st.session_state.generated_situations.append(new_situation)
@@ -174,10 +175,12 @@ if st.session_state.state == "feedback_loop":
             else:
                 response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
             
-            parsed = agent._parse_json(response)
-            if parsed is None or not isinstance(parsed, dict):
+            repaired = repair_json(response)
+            try:
+                parsed = json.loads(repaired)
+            except json.JSONDecodeError as e:
                 st.error("⚠️ 중재 전략 생성 실패: JSON 파싱 오류")
-                st.stop()
+                st.stop()                
             try:
                 action_input = parsed["action_input"]
                 first_event = list(action_input.values())[0]
@@ -188,6 +191,17 @@ if st.session_state.state == "feedback_loop":
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
+
+            st.markdown("### 🎯 제안된 중재 전략")
+            st.markdown(f"- **원인:** {cause}")
+            if interventions:
+                for i, intr in enumerate(interventions, start=1):
+                    st.markdown(f"**전략 {i}:**")
+                    st.markdown(f"- 전략: {intr.get('strategy')}")
+                    st.markdown(f"- 목적: {intr.get('purpose')}")
+                    example = intr.get('example')
+                    if example:
+                        st.markdown(f"- 예시: {example}")
 
             st.session_state.loop_index += 1
             st.rerun()
