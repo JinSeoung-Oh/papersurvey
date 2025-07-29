@@ -30,16 +30,13 @@ def load_graph(path: str) -> CareGraph:
 if 'llm' not in st.session_state:
     st.session_state.llm = _4oMiniClient()
 
-if 'agent' not in st.session_state:
-    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
-
 # --- Session initialization ---
 if 'graph' not in st.session_state:
     # Initialize or load CareGraph and profile
     if PKL_FILE.exists():
         st.session_state.graph = load_graph(str(PKL_FILE))
     else:
-        st.session_state.graph = CareGraph(st.session_state.llm, st.session_state.agent)
+        st.session_state.graph = CareGraph(st.session_state.llm)
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
             user_id="A123",
@@ -50,6 +47,8 @@ if 'graph' not in st.session_state:
             )
         st.session_state.graph.add_profile(profile)
 
+if 'agent' not in st.session_state:
+    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
     
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state:
