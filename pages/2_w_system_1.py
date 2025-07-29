@@ -14,7 +14,8 @@ sys.path.append(str(PROJECT_ROOT))
 
 from pages.tools import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 
-# 비디오
+PKL_FILE    = PROJECT_DIR / "caregraph_full.pkl"
+
 st.video("https://youtu.be/GjddtdjWaj8")
 
 for key in [k for k in st.session_state.keys() if k != "expert_id"]:
@@ -26,13 +27,19 @@ def load_graph(path: str) -> CareGraph:
     graph.llm = _4oMiniClient()
     return graph
 
+if 'llm' not in st.session_state:
+    st.session_state.llm = _4oMiniClient()
+
+if 'agent' not in st.session_state:
+    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
+
 # --- Session initialization ---
 if 'graph' not in st.session_state:
     # Initialize or load CareGraph and profile
-    if os.path.exists("../caregraph_full.pkl"):
-        st.session_state.graph = load_graph("../caregraph_full.pkl")
+    if PKL_FILE.exists()::
+        st.session_state.graph = load_graph(str(PKL_FILE))
     else:
-        st.session_state.graph = CareGraph()
+        st.session_state.graph = CareGraph(st.session_state.llm, st.session_state.agent)
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
             user_id="A123",
@@ -43,11 +50,6 @@ if 'graph' not in st.session_state:
             )
         st.session_state.graph.add_profile(profile)
 
-if 'llm' not in st.session_state:
-    st.session_state.llm = _4oMiniClient()
-
-if 'agent' not in st.session_state:
-    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
     
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state:
