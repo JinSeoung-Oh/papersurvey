@@ -36,13 +36,13 @@ if 'survey_submitted' not in st.session_state:
 st.video("https://youtu.be/AaWWfjb8DjM")
 
 # 멜트다운 초기 상황에 대한 첫 중재 방안 입력
-if "comments_history" not in st.session_state4:
+if "comments_history" not in st.session_state:
     st.session_state.comments_history = []
 
-if "generated_situations" not in st.session_state4:
+if "generated_situations" not in st.session_state:
     st.session_state.generated_situations = []
 
-if "loop_index" not in st.session_state4:
+if "loop_index" not in st.session_state:
     st.session_state.loop_index = 0
 
 # 초기 질문만 출력
