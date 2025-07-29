@@ -19,6 +19,9 @@ st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 �
 원본 링크 : https://www.youtube.com/shorts/vXB3Wbph2Sk
 """)
 
+for key in [k for k in st.session_state.keys() if k != "expert_id"]:
+    del st.session_state[key]
+
 if 'llm' not in st.session_state7:
     st.session_state7.llm = _4oMiniClient()
 
