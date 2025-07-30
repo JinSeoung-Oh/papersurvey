@@ -15,7 +15,7 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # 설문 제출 여부 상태 초기화
-if 'survey_submitted' not in st.session_state:
+if 'survey_submitted3' not in st.session_state:
     st.session_state.survey_submitted3 = False
 
 # 바로 설문 시작
