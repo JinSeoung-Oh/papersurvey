@@ -17,6 +17,43 @@ from pages.tools import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 PKL_FILE = PROJECT_ROOT / "caregraph_full.pkl"
 sys.modules["__main__"].CareGraph = CareGraph
 
+outformat = {
+  "action_input": {
+    "Aggressive behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Self‑harm behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Tantrum behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Ambiguous physical interaction": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    }
+  }
+}
+
 st.video("https://youtu.be/GjddtdjWaj8")
 
 for key in [k for k in st.session_state.keys() if k != "expert_id"]:
@@ -108,16 +145,17 @@ if st.session_state.state == "feedback_loop":
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    if 'loop2_index' not in st.session_state2:
+    if 'loop_index' not in st.session_state:
         st.session_state.loop_index = 0
         st.session_state.generated_situations = []
         st.session_state.generated_strategies = [st.session_state.strategy]  # 초기 전략 포함
+        st.session_state.current_strategy = st.session_state.strategy
         st.session_state.user_comments = []
         st.session_state.survey_saved = False
         
     if st.session_state.loop_index < 3:
         idx = st.session_state.loop_index
-        current_strategy = st.session_state.generated_strategies[idx]
+        current_strategy = st.session_state.current_strategy
 
         previous_situation = (
             st.session_state.situation if idx == 0
@@ -138,11 +176,13 @@ if st.session_state.state == "feedback_loop":
                      이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
                      {intervention_txt}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요.
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함해 주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. **억지로 상황을 만들어 복잡하게 하지 마세요**
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
                      """
         new_situation = st.session_state.llm.call_as_llm(prompt)
         st.session_state.generated_situations.append(new_situation)
+        st.session_state.situation = new_situation
 
         # 2. 상황 사용자에게 제시
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
@@ -159,7 +199,7 @@ if st.session_state.state == "feedback_loop":
             # 4. MemoryAgent가 전략 생성
             agent = st.session_state.agent
             caregraph = st.session_state.graph
-            user_id = "C123"
+            user_id = "A123"
             situation = new_situation
             sid, similar_events = caregraph.find_similar_events(user_id, situation)
             user_profile = agent._profile_ctx(user_id)
@@ -169,9 +209,10 @@ if st.session_state.state == "feedback_loop":
                     f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
                     for i, e in enumerate(similar_events)
                 ])
-                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile, outformat)
             else:
-                response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
+                failed_events = current_strategy.get('intervention', [])
+                response = agent.alt_ask(user_id, comment, failed_event=failed_events, user_profile=user_profile, situation=situation, outformat=outformat)
             
             repaired = repair_json(response)
             try:
@@ -185,21 +226,11 @@ if st.session_state.state == "feedback_loop":
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
                 structured = {"cause": cause, "intervention": interventions}
+                st.session_state.current_strategy = structured
                 st.session_state.generated_strategies.append(structured)
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
-
-            st.markdown("### 🎯 제안된 중재 전략")
-            st.markdown(f"- **원인:** {cause}")
-            if interventions:
-                for i, intr in enumerate(interventions, start=1):
-                    st.markdown(f"**전략 {i}:**")
-                    st.markdown(f"- 전략: {intr.get('strategy')}")
-                    st.markdown(f"- 목적: {intr.get('purpose')}")
-                    example = intr.get('example')
-                    if example:
-                        st.markdown(f"- 예시: {example}")
 
             st.session_state.loop_index += 1
             st.rerun()
