@@ -190,6 +190,7 @@ if 'expert_id' not in st.session_state:
 
 # --- Feedback loop ---
 if st.session_state.state == "feedback_loop":
+    st.write("세션 상태 키 목록:", list(st.session_state.keys()))
     # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
     if 'loop_index' not in st.session_state:
         st.session_state.loop_index = 0
