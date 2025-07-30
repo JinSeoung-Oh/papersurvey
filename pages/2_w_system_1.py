@@ -105,7 +105,6 @@ outformat = {
     }
   }
 }
-}
 
 st.video("https://youtu.be/GjddtdjWaj8")
 
