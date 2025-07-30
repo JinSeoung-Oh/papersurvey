@@ -219,10 +219,8 @@ if st.session_state.state == "feedback_loop":
                 key=f"comment_{idx}"
             )
           submitted = st.form_submit_button("다음")
-          st.write('check it', submitted)
 
         if submitted:
-            st.write('check.........')
             if not comment.strip():
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
@@ -241,7 +239,7 @@ if st.session_state.state == "feedback_loop":
                     f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
                     for i, e in enumerate(similar_events)
                 ])
-                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile, outformat)
             else:
                 failed_events = updated_strat.get('intervention', [])
                 response = agent.alt_ask(
@@ -249,7 +247,8 @@ if st.session_state.state == "feedback_loop":
                     comment,
                     failed_event=failed_events,
                     user_profile=user_profile,
-                    situation=situation
+                    situation=situation,
+                    outformat = outformat
                 )
 
             # 8. JSON repair & 파싱
