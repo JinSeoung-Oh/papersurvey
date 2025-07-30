@@ -17,6 +17,43 @@ from pages.tools import CareGraph, MemoryAgent, _4oMiniClient, UserProfile
 PKL_FILE = PROJECT_ROOT / "caregraph_full.pkl"
 sys.modules["__main__"].CareGraph = CareGraph
 
+outformat = {
+  "action_input": {
+    "Aggressive behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Self‑harm behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Tantrum behavior": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    },
+    "Ambiguous physical interaction": {
+      "cause": "Brief cause description",
+      "intervention": [
+        "Intervention 1",
+        "Intervention 2",
+        "..."
+      ]
+    }
+  }
+}
+
 st.video("https://youtu.be/GjddtdjWaj8")
 
 for key in [k for k in st.session_state.keys() if k != "expert_id"]:
@@ -171,9 +208,10 @@ if st.session_state.state == "feedback_loop":
                     f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
                     for i, e in enumerate(similar_events)
                 ])
-                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile, outformat)
             else:
-                response = agent.alt_ask(user_id, comment, failed_event="N/A", user_profile=user_profile, situation=situation)
+                failed_events = current_strategy.get('intervention', [])
+                response = agent.alt_ask(user_id, comment, failed_event=failed_events, user_profile=user_profile, situation=situation, outformat=outformat)
             
             repaired = repair_json(response)
             try:
@@ -187,21 +225,11 @@ if st.session_state.state == "feedback_loop":
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
                 structured = {"cause": cause, "intervention": interventions}
+                st.session_state.strategy = structured
                 st.session_state.generated_strategies.append(structured)
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
-
-            st.markdown("### 🎯 제안된 중재 전략")
-            st.markdown(f"- **원인:** {cause}")
-            if interventions:
-                for i, intr in enumerate(interventions, start=1):
-                    st.markdown(f"**전략 {i}:**")
-                    st.markdown(f"- 전략: {intr.get('strategy')}")
-                    st.markdown(f"- 목적: {intr.get('purpose')}")
-                    example = intr.get('example')
-                    if example:
-                        st.markdown(f"- 예시: {example}")
 
             st.session_state.loop_index += 1
             st.rerun()
