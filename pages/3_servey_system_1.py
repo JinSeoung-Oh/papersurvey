@@ -14,8 +14,11 @@ if 'expert_id' not in st.session_state:
     if not st.session_state.expert_id:
         st.stop()
 
-for key in [k for k in st.session_state.keys() if k != "expert_id"]:
-    del st.session_state[key]
+if 'initialized2' not in st.session_state:
+    for k in list(st.session_state.keys()):
+        if k != "expert_id":
+            del st.session_state[k]
+    st.session_state.initialized2 = True
 
 # 설문 제출 여부 상태 초기화
 if 'survey_submitted' not in st.session_state:
