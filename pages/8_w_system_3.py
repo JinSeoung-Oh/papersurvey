@@ -56,25 +56,22 @@ outformat = {
 
 st.video("https://youtu.be/GjddtdjWaj8")
 
-for key in [k for k in st.session_state.keys() if k != "expert_id"]:
-    del st.session_state[key]
-
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
     graph = joblib.load(path)
     graph.llm = _4oMiniClient()
     return graph
 
-if 'llm' not in st.session_state:
-    st.session_state.llm = _4oMiniClient()
+if 'llm8' not in st.session_state:
+    st.session_state.llm8 = _4oMiniClient()
 
 # --- Session initialization ---
-if 'graph' not in st.session_state:
+if 'graph8' not in st.session_state:
     # Initialize or load CareGraph and profile
     if PKL_FILE.exists():
-        st.session_state.graph = load_graph(str(PKL_FILE))
+        st.session_state.graph8 = load_graph(str(PKL_FILE))
     else:
-        st.session_state.graph = CareGraph(st.session_state.llm)
+        st.session_state.graph8 = CareGraph(st.session_state.llm8)
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
             user_id="A123",
@@ -83,18 +80,18 @@ if 'graph' not in st.session_state:
             stress_signals=['aggressive behavior'],
             preference = ['Blocking light through a blanket']
             )
-        st.session_state.graph.add_profile(profile)
+        st.session_state.graph8.add_profile(profile)
 
 if 'agent' not in st.session_state:
-    st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
+    st.session_state.agent8 = MemoryAgent(st.session_state.llm8, st.session_state.graph8)
     
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state:
-    st.session_state.state = "feedback_loop"
-    st.session_state.situation = (
+    st.session_state.state8 = "feedback_loop"
+    st.session_state.situation8 = (
         "패밀리 레스토랑에서 자폐 아동이 피로와 배고픔으로 인해 멜트다운을 일으키며 메뉴판을 빼앗으려다 통제가 되지 않자 공격적인 행동을 보입니다."
     )
-    st.session_state.strategy = {
+    st.session_state.strategy8 = {
         'cause': '소음 등 감각 과부하와 피로, 배고픔 등의 신체적 불편감이 누적되어, 아동이 자신을 표현하는 방법으로 소리 지르며 요구하는 행동으로 나타남.',
         'intervention': [
             {'strategy': '감각 조절 및 선호 전략 제공',
@@ -103,8 +100,8 @@ if 'state2' not in st.session_state:
                          'standard': '일상적으로 감각 통합 치료 세션에서 Worm hug와 같은 선호 전략을 연습시킴으로써, 식당 등 외부자극이 강한 환경에서도 자체 조절능력을 기를 수 있도록 돕는다'}}
         ]
     }
-    st.session_state.history = []
-    st.session_state.loop_count = 0
+    st.session_state.history8 = []
+    st.session_state.loop_count8 = 0
 
 # 관리자 정의 초기 안내
 
@@ -133,22 +130,22 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # --- Feedback loop ---
-if st.session_state.state == "feedback_loop":
+if st.session_state.state8 == "feedback_loop":
     # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
-    if 'loop_index' not in st.session_state:
-        st.session_state.loop_index = 0
-        st.session_state.generated_situations = []
-        st.session_state.generated_strategies = [st.session_state.strategy]
-        st.session_state.current_strategy = st.session_state.strategy
-        st.session_state.user_comments = []
-        st.session_state.survey_saved = False
+    if 'loop_index8' not in st.session_state:
+        st.session_state.loop_index8 = 0
+        st.session_state.generated_situations8 = []
+        st.session_state.generated_strategies8 = [st.session_state.strategy8]
+        st.session_state.current_strategy8 = st.session_state.strategy8
+        st.session_state.user_comments8 = []
+        st.session_state.survey_saved8 = False
         # 초기 상황 복사
-        st.session_state.initial_situation = st.session_state.situation
+        st.session_state.initial_situation8 = st.session_state.situation8
 
     # 2) 초기(디폴트) 피드백 영역
-    default_strat = st.session_state.strategy
+    default_strat = st.session_state.strategy8
     st.subheader("🤖 초기 중재 전략 피드백")
-    st.write(f"**문제 상황 (초기):** {st.session_state.initial_situation}")
+    st.write(f"**문제 상황 (초기):** {st.session_state.initial_situation8}")
     st.write(f"**원인:** {default_strat.get('cause')}")
     st.write("**중재 후보 (초기):**")
     for i, intr in enumerate(default_strat.get('intervention', []), 1):
@@ -160,9 +157,9 @@ if st.session_state.state == "feedback_loop":
     st.markdown("---")
 
     # 3) 업데이트된 전략 피드백 영역
-    updated_strat = st.session_state.current_strategy
+    updated_strat = st.session_state.current_strategy8
     st.subheader("🤖 업데이트된 중재 전략 피드백")
-    st.write(f"**문제 상황 (업데이트):** {st.session_state.situation}")
+    st.write(f"**문제 상황 (업데이트):** {st.session_state.situation8}")
     st.write(f"**원인:** {updated_strat.get('cause')}")
     st.write("**중재 후보 (업데이트):**")
     for i, intr in enumerate(updated_strat.get('intervention', []), 1):
@@ -171,11 +168,11 @@ if st.session_state.state == "feedback_loop":
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
     # 4) 루프 진행: 최대 3번
-    if st.session_state.loop_index < 3:
-        idx = st.session_state.loop_index
+    if st.session_state.loop_index8 < 3:
+        idx = st.session_state.loop_index8
         prev_situation = (
-            st.session_state.initial_situation if idx == 0
-            else st.session_state.generated_situations[idx - 1]
+            st.session_state.initial_situation8 if idx == 0
+            else st.session_state.generated_situations8[idx - 1]
         )
 
         # 전략 요약 텍스트 생성
@@ -188,7 +185,7 @@ if st.session_state.state == "feedback_loop":
                 f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
             )
 
-        loop_key = f"new_situation_{idx}"
+        loop_key = f"new_situation_8_{idx}"
         # 최초 진입 또는 미생성 시 새로운 상황 생성
         if loop_key not in st.session_state:
             prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
@@ -198,10 +195,10 @@ if st.session_state.state == "feedback_loop":
 이 중재 방안이 충분히 완화하지 못했거나 상황이 거부되었을 때 발생한 **새로운 상황**을 자연스럽게 생성해주세요.
 감각 자극, 외부 요인, 아동의 정서 반응을 포함하여 구체적으로 기술하세요.
 단 하나의 감각 자극만 포함되어야 합니다."""
-            new_sit = st.session_state.llm.call_as_llm(prompt)
+            new_sit = st.session_state.llm8.call_as_llm(prompt)
             st.session_state[loop_key] = new_sit
-            st.session_state.generated_situations.append(new_sit)
-            st.session_state.situation = new_sit
+            st.session_state.generated_situations8.append(new_sit)
+            st.session_state.situation8 = new_sit
 
         # 5. 새 상황 표시
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
@@ -219,11 +216,11 @@ if st.session_state.state == "feedback_loop":
             if not comment.strip():
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
-            st.session_state.user_comments.append(comment)
+            st.session_state.user_comments8.append(comment)
 
             # 7. MemoryAgent 전략 생성
-            agent = st.session_state.agent
-            caregraph = st.session_state.graph
+            agent = st.session_state.agent8
+            caregraph = st.session_state.graph8
             user_id = "A123"
             situation = st.session_state[loop_key]
             sid, similar_events = caregraph.find_similar_events(user_id, situation)
@@ -260,26 +257,17 @@ if st.session_state.state == "feedback_loop":
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
                 structured = {"cause": cause, "intervention": interventions}
-                st.session_state.current_strategy = structured
-                st.session_state.generated_strategies.append(structured)
+                st.session_state.current_strategy8 = structured
+                st.session_state.generated_strategies8.append(structured)
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
 
             # 10. 루프 인덱스 증가 및 rerun
-            st.session_state.loop_index += 1
+            st.session_state.loop_index8 += 1
             st.rerun()
-
-if session_state.survey_saved:
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("◀ 이전 페이지"):
-            st.switch_page("pages/1_wo_system_1.py")       # pages/home.py (확장자 제외)
-    with col2:
-        if st.button("다음 페이지 ▶"):
-            st.switch_page("pages/3_servey_system_1.py")
-
-if st.session_state.survey_saved:
+          
+if st.session_state.survey_saved8:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
