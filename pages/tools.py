@@ -307,7 +307,7 @@ class MemoryAgent:
         user_id: str,
         user_input: str,
         similar_events: str,
-        user_profile: str
+        user_profile: str,
         outformat: str
     ) -> str:
         prompt = (
