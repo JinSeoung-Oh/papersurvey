@@ -56,8 +56,11 @@ outformat = {
 
 st.video("https://youtu.be/GjddtdjWaj8")
 
-for key in [k for k in st.session_state.keys() if k != "expert_id"]:
-    del st.session_state[key]
+if 'initialized' not in st.session_state:
+    for k in list(st.session_state.keys()):
+        if k != "expert_id":
+            del st.session_state[k]
+    st.session_state.initialized = True
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
