@@ -211,18 +211,19 @@ if st.session_state.state == "feedback_loop":
 
         # 6. 사용자 코멘트 입력 폼
         with st.form(key=f"loop_form_{idx}"):
-            comment = st.text_area(
+          comment = st.text_area(
                 "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
                 key=f"comment_{idx}"
             )
-            submitted = st.form_submit_button("다음")
+          submitted = st.form_submit_button("다음")
+          st.write('check it', submitted)
 
         if submitted:
+            st.write('check.........')
             if not comment.strip():
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
             st.session_state.user_comments.append(comment)
-            st.write("debuging......")
 
             # 7. MemoryAgent 전략 생성
             agent = st.session_state.agent
