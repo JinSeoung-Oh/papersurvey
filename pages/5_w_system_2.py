@@ -184,7 +184,7 @@ if st.session_state.state5 == "feedback_loop":
                 f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
             )
 
-        loop_key = f"new_situation_{idx}"
+        loop_key = f"new_situation_5_{idx}"
         # 최초 진입 또는 미생성 시 새로운 상황 생성
         if loop_key not in st.session_state:
             prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
