@@ -89,7 +89,7 @@ if 'agent' not in st.session_state:
     st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
 
 # --- Page‐specific state (state2) initialization ---
-if 'state2' not in st.session_state:
+if 'state' not in st.session_state:
     st.session_state.state = "feedback_loop"
     st.session_state.situation = (
         "자기 방에서 A는 밝은 바깥을 보던 중 갑작스럽게 정서적 멜트다운에 빠져 울고 소리를 지르며, “Lucifer가 나를 훔쳐간다”, “비가 와야 한다”는 강박적이고 혼란스러운 발화를 반복하는 등 불안과 감정 폭발을 보입니다."
