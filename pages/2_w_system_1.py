@@ -232,7 +232,13 @@ if st.session_state.state == "feedback_loop":
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
                 st.stop()
-
+              
+            st.write("**중재 후보:**")
+            for i, intr in enumerate(interventions or [], 1):
+                st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
+                st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
+                st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
+              
             st.session_state.loop_index += 1
             st.rerun()
             
