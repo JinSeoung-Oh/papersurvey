@@ -146,16 +146,17 @@ if st.session_state.state == "feedback_loop":
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    if 'loop2_index' not in st.session_state:
+    if 'loop_index' not in st.session_state:
         st.session_state.loop_index = 0
         st.session_state.generated_situations = []
         st.session_state.generated_strategies = [st.session_state.strategy]  # 초기 전략 포함
+        st.session_state.current_strategy = st.session_state.strategy
         st.session_state.user_comments = []
         st.session_state.survey_saved = False
         
     if st.session_state.loop_index < 3:
         idx = st.session_state.loop_index
-        current_strategy = st.session_state.generated_strategies[idx]
+        current_strategy = st.session_state.current_strategy
 
         previous_situation = (
             st.session_state.situation if idx == 0
@@ -225,7 +226,7 @@ if st.session_state.state == "feedback_loop":
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
                 structured = {"cause": cause, "intervention": interventions}
-                st.session_state.strategy = structured
+                st.session_state.current_strategy = structured
                 st.session_state.generated_strategies.append(structured)
             except Exception as e:
                 st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
