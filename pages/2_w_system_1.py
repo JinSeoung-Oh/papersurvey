@@ -225,6 +225,7 @@ if st.session_state.state == "feedback_loop":
       
         # 3) 업데이트된 전략 피드백 영역
         updated_strat = st.session_state.current_strategy
+        st.write(updated_strat)
         st.subheader("🤖 업데이트된 중재 전략 피드백")
         st.write(f"**문제 상황 (업데이트):** {prev_situation}")
         st.write(f"**원인:** {updated_strat.get('cause')}")
