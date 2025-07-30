@@ -110,7 +110,7 @@ st.video("https://youtu.be/GjddtdjWaj8")
 
 st.write("세션 상태 키 목록:", list(st.session_state.keys()))
 
-if 'initialized' not in st.session_state:
+if 'initialized1' not in st.session_state:
     for k in list(st.session_state.keys()):
         if k != "expert_id":
             del st.session_state[k]
