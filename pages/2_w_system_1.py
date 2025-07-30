@@ -222,6 +222,7 @@ if st.session_state.state == "feedback_loop":
                 st.warning("댓글을 작성해주세요.")
                 st.stop()
             st.session_state.user_comments.append(comment)
+            st.write("debuging......")
 
             # 7. MemoryAgent 전략 생성
             agent = st.session_state.agent
