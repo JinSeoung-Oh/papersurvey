@@ -183,6 +183,7 @@ if st.session_state.state == "feedback_loop":
                      """
         new_situation = st.session_state.llm.call_as_llm(prompt)
         st.session_state.generated_situations.append(new_situation)
+        st.session_state.situation = new_situation
 
         # 2. 상황 사용자에게 제시
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
