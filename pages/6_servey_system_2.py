@@ -8,12 +8,6 @@ import re
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-if 'initialized6' not in st.session_state:
-    for k in list(st.session_state.keys()):
-        if k != "expert_id":
-            del st.session_state[k]
-    st.session_state.initialized6 = True
-
 # Expert ID 입력 (한 번만 입력받음)
 if 'expert_id' not in st.session_state:
     st.session_state.expert_id = st.text_input("응답자 ID를 입력해주세요.")
@@ -21,8 +15,8 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # 설문 제출 여부 상태 초기화
-if 'survey_submitted' not in st.session_state:
-    st.session_state.survey_submitted = False
+if 'survey_submitted6' not in st.session_state:
+    st.session_state.survey_submitted6 = False
 
 # 바로 설문 시작
 st.subheader("📋 설문조사: 시스템 사용 vs 비사용 비교 평가")
@@ -74,10 +68,10 @@ if st.button("설문 제출"):
             f"{q1},{q2},{q3},{q4},{q5},{q6},{q7},{q8},{q9},{q10},{q11},\"{q12}\"\n"
         )
 
-    st.session_state.survey_submitted = True
+    st.session_state.survey_submitted6 = True
     st.success("응답이 저장되었습니다. 감사합니다!")
     
-if st.session_state.survey_submitted:
+if st.session_state.survey_submitted6:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("◀ 이전 페이지"):
