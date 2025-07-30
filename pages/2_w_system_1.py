@@ -307,6 +307,7 @@ if st.session_state.state == "feedback_loop":
 
             # 8. JSON repair & 파싱
             repaired = repair_json(response)
+            st.write(repaired)
             try:
                 parsed = json.loads(repaired)
             except json.JSONDecodeError as e:
@@ -319,6 +320,7 @@ if st.session_state.state == "feedback_loop":
                 first_event = list(action_input.values())[0]
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
+                st.write(interventions)
                 structured = {"cause": cause, "intervention": interventions}
                 st.session_state.current_strategy = structured
                 st.session_state.generated_strategies.append(structured)
