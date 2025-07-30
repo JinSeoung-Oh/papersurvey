@@ -308,16 +308,17 @@ class MemoryAgent:
         user_input: str,
         similar_events: str,
         user_profile: str
+        outformat: str
     ) -> str:
         prompt = (
             self._profile_ctx(user_id) +
             f"{user_input}을 철저하게 수행해주세요" + 
-            "**event** 및 **observed_behavior** 그리고 **intervention_strategies**을 포함하여 구체적인 JSON 리스트로 제시하세요." + 
             "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 과거 중재에 성공한적이 있는 {similar_events}를 참고하여 {user_input}에 알맞게 전략 수립 후에 제시해주세요." +
             f"당신이 수립한 전략은 일반적인 전략이 아닌 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
-            "멜트 다운 상황에 대한 예방적인 방안을 immediate에 넣지 마세요. immediate는 멜트 다운 상황을 해결하기 위한 즉각적이고 현실적인 방안이어야만 합니다." + 
-            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요."+
+            "멜트 다운 상황에 대한 예방적인 방안을 immediate에 넣지 마세요. immediate는 멜트 다운 상황을 해결하기 위한 즉각적이고 현실적인 방안이어야만 합니다." +
+            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요." + 
+            f"반드시 {outformat}에 맞추어서 리턴해주세요." + 
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
@@ -346,18 +347,19 @@ class MemoryAgent:
         failed_event: str,
         user_profile: str,
         situation: str,
+        outformat: str
     ) -> str:
         prompt = (
             f"문제 상황: {situation}" + "\n"
             f"이전 전략 '{failed_event}'가 실패했습니다. 사용자 피드백: {user_feedback}. " + "\n"
             f"자폐인 프로파일 : {user_profile}" + "\n"
             "주어진 이전 전략은 문제 상황을 해결하지 못 하였습니다. 사용자 피드백과 자폐인 프로파일을 반영하여 새로운 중재 전략을 제시해주세요" +
-            "**event** 및 **observed_behavior** 그리고 **intervention_strategies**을 포함하여 구체적인 JSON 리스트로 제시하세요." +
             "각 전략은 돌봄 교사가 즉시 현장에서 사용할 수 있어야 하며 단계별 예시를 포함해야 합니다." +
             f"전략 수립 시에 {user_feedback}을 최우선으로 고려하여 전략 수립 후에 제시해주세요." +
             f"당신이 수립한 전략은 {user_profile}에 가장 알맞은 전략이어야만 합니다. 그렇지 않은 답변은 리턴하지 마세요." +
-            "immediate에는 그 상황에서 즉각적으로 할 수 있는 현실적인 것이어야만 합니다." + 
-            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요."+
+            "immediate에는 그 상황에서 즉각적으로 할 수 있는 현실적인 것이어야만 합니다." +
+            "주어진 정보를 주관적으로 해석하거나 주어지지 않은 쓸데 없는 정보를 추가 하지 마세요." + 
+            f"반드시 {outformat}에 맞추어서 리턴해주세요." + 
             "반드시 한국어로 답하세요"
         )
         response = self.llm.call_as_llm(prompt)
@@ -406,6 +408,7 @@ class MemoryAgent:
         failed_event: str,
         user_profile: str,
         situation: str,
+        outformat: str
     ) -> str:
         # 1) Ask simple success/failure
         ok = input(f"전략이 성공적이었나요? (y/n): ")
@@ -413,7 +416,7 @@ class MemoryAgent:
             return "Complete"
         # 2) On failure, get detailed feedback
         detail = input("실패 이유나 조치 후 자폐인의 반응 등을 구체적으로 입력해주세요: ")
-        return self.alt_ask(user_id, detail, failed_event, user_profile, situation)
+        return self.alt_ask(user_id, detail, failed_event, user_profile, situation, outformat)
 
     def finalize(self, user_id: str):
         if not self.history:
@@ -441,7 +444,7 @@ class MemoryAgent:
                 idx = int(choice) - 1
                 chosen = interventions[idx]
             except (ValueError, IndexError):
-                print("저장 하지 않음")
+                print("저장되지 않았습니다.")
                 continue
 
             # 구조화된 저장 로직
