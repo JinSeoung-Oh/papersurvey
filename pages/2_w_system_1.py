@@ -114,11 +114,11 @@ def load_graph(path: str) -> CareGraph:
     graph.llm = _4oMiniClient()
     return graph
 
-if 'llm' not in st.session_state:
+if 'llm2' not in st.session_state:
     st.session_state.llm2 = _4oMiniClient()
 
 # --- Session initialization ---
-if 'graph' not in st.session_state:
+if 'graph2' not in st.session_state:
     # Initialize or load CareGraph and profile
     if PKL_FILE.exists():
         st.session_state.graph2 = load_graph(str(PKL_FILE))
@@ -134,7 +134,7 @@ if 'graph' not in st.session_state:
             )
         st.session_state.graph2.add_profile(profile)
 
-if 'agent' not in st.session_state:
+if 'agent2' not in st.session_state:
     st.session_state.agent2 = MemoryAgent(st.session_state.llm2, st.session_state.graph2)
 
 # --- Page‐specific state (state2) initialization ---
