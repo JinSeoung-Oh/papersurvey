@@ -88,9 +88,6 @@ if 'graph' not in st.session_state:
 if 'agent' not in st.session_state:
     st.session_state.agent = MemoryAgent(st.session_state.llm, st.session_state.graph)
 
-import inspect
-st.write(inspect.signature(st.session_state.agent.alt_ask))
-
 # --- Page‐specific state (state2) initialization ---
 if 'state2' not in st.session_state:
     st.session_state.state = "feedback_loop"
