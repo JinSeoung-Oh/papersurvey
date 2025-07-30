@@ -183,9 +183,9 @@ if 'expert_id' not in st.session_state:
         st.stop()
 
 # --- Feedback loop ---
-if st.session_state.state == "feedback_loop":
+if st.session_state.state2 == "feedback_loop":
     # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
-    if 'loop_index' not in st.session_state:
+    if 'loop_index2' not in st.session_state:
         st.session_state.loop_index2 = 0
         st.session_state.generated_situations2 = []
         st.session_state.generated_strategies2 = [st.session_state.strategy2]
