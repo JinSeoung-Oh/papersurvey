@@ -134,8 +134,19 @@ if 'expert_id' not in st.session_state:
 
 # --- Feedback loop ---
 if st.session_state.state == "feedback_loop":
-    strat = st.session_state.strategy
+    # 1) 초기화: loop_index 및 전략 상태 설정
+    if 'loop_index' not in st.session_state:
+        st.session_state.loop_index = 0
+        st.session_state.generated_situations = []
+        st.session_state.generated_strategies = [st.session_state.strategy]
+        st.session_state.current_strategy = st.session_state.strategy
+        st.session_state.user_comments = []
+        st.session_state.survey_saved = False
 
+    # 2) 현재 전략 불러오기
+    strat = st.session_state.current_strategy
+
+    # 3) 피드백 영역 UI
     st.subheader("🤖 중재 전략 피드백")
     st.write(f"**문제 상황:** {st.session_state.situation}")
     st.write(f"**원인:** {strat.get('cause')}")
@@ -145,23 +156,16 @@ if st.session_state.state == "feedback_loop":
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    if 'loop_index' not in st.session_state:
-        st.session_state.loop_index = 0
-        st.session_state.generated_situations = []
-        st.session_state.generated_strategies = [st.session_state.strategy]  # 초기 전략 포함
-        st.session_state.current_strategy = st.session_state.strategy
-        st.session_state.user_comments = []
-        st.session_state.survey_saved = False
-        
+    # 4) 루프 진행
     if st.session_state.loop_index < 3:
         idx = st.session_state.loop_index
         current_strategy = st.session_state.current_strategy
-
         previous_situation = (
             st.session_state.situation if idx == 0
             else st.session_state.generated_situations[idx - 1]
         )
-        
+
+        # 전략 요약 텍스트 생성
         intervention_txt = ""
         for item in current_strategy.get('intervention', []):
             intervention_txt += (
@@ -170,87 +174,91 @@ if st.session_state.state == "feedback_loop":
                 f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
                 f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
             )
-   
-        prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
-                     {previous_situation}
-                     이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
-                     {intervention_txt}
-                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. **억지로 상황을 만들어 복잡하게 하지 마세요**
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
-                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
-                     """
-        new_situation = st.session_state.llm.call_as_llm(prompt)
-        st.session_state.generated_situations.append(new_situation)
-        st.session_state.situation = new_situation
 
-        # 2. 상황 사용자에게 제시
-        st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
-        st.markdown(new_situation)
+        # 새로운 상황 생성 (버튼 클릭 전에는 생성되지 않음)
+        loop_key = f"new_situation_{idx}"
+        with st.form(key=f"loop_form_{idx}"):
+            # 상황 표시
+            if loop_key in st.session_state:
+                st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
+                st.markdown(st.session_state[loop_key])
 
-        # 3. 사용자 comment 입력
-        comment = st.text_area("현재 주어진 상황을 자유롭게 요약하여 입력해주세요", key=f"comment_{idx}")
-        if st.button("다음", key=f"next_{idx}"):
-            if comment.strip() == "":
-                st.warning("댓글을 작성해주세요.")
-                st.stop()
-            st.session_state.user_comments.append(comment)
-            
-            # 4. MemoryAgent가 전략 생성
-            agent = st.session_state.agent
-            caregraph = st.session_state.graph
-            user_id = "A123"
-            situation = new_situation
-            sid, similar_events = caregraph.find_similar_events(user_id, situation)
-            user_profile = agent._profile_ctx(user_id)
+            # 사용자 코멘트 입력
+            comment = st.text_area(
+                "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
+                key=f"comment_{idx}"
+            )
+            submitted = st.form_submit_button("다음")
 
-            if sid is not None and similar_events:
-                formatted_events = "\n".join([
-                    f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
-                    for i, e in enumerate(similar_events)
-                ])
-                response = agent.graph_ask(user_id, comment, formatted_events, user_profile, outformat)
-            else:
-                failed_events = current_strategy.get('intervention', [])
-                response = agent.alt_ask(user_id, comment, failed_event=failed_events, user_profile=user_profile, situation=situation, outformat=outformat)
-            
-            repaired = repair_json(response)
-            try:
-                parsed = json.loads(repaired)
-            except json.JSONDecodeError as e:
-                st.error("⚠️ 중재 전략 생성 실패: JSON 파싱 오류")
-                st.stop()                
-            try:
-                action_input = parsed["action_input"]
-                first_event = list(action_input.values())[0]
-                cause = first_event.get("cause")
-                interventions = first_event.get("intervention")
-                structured = {"cause": cause, "intervention": interventions}
-                st.session_state.current_strategy = structured
-                st.session_state.generated_strategies.append(structured)
-            except Exception as e:
-                st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
-                st.stop()
+            if submitted:
+                if comment.strip() == "":
+                    st.warning("댓글을 작성해주세요.")
+                    st.stop()
+                st.session_state.user_comments.append(comment)
 
-            st.session_state.loop_index += 1
-            st.rerun()
-            
-    elif st.session_state.loop_index >= 3 and not st.session_state.survey_saved:
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        expert_id = st.session_state.expert_id
-        user_dir = f"responses/{expert_id}"
-        os.makedirs(user_dir, exist_ok=True)
-        filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
-        
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
-            for i in range(3):
-                situation = st.session_state.generated_situations[i].replace("\n", " ")
-                comment = st.session_state.user_comments[i].replace("\n", " ")
-                strategy = json.dumps(st.session_state.generated_strategies[i+1], ensure_ascii=False).replace("\n", " ")
-                f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
-        st.session_state.survey_saved = True
-        st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
+                # 실제 상황 생성 (폼 제출 시)
+                if loop_key not in st.session_state:
+                    prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
+{previous_situation}
+이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
+{intervention_txt}
+이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
+다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. 억지로 상황을 만들어 복잡하게 하지 마세요.
+감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다."""
+                    new_sit = st.session_state.llm.call_as_llm(prompt)
+                    st.session_state[loop_key] = new_sit
+                    st.session_state.generated_situations.append(new_sit)
+                    st.session_state.situation = new_sit
+
+                # MemoryAgent 전략 생성
+                agent = st.session_state.agent
+                caregraph = st.session_state.graph
+                user_id = "A123"
+                situation = st.session_state[loop_key]
+                sid, similar_events = caregraph.find_similar_events(user_id, situation)
+                user_profile = agent._profile_ctx(user_id)
+
+                if sid is not None and similar_events:
+                    formatted_events = "\n".join([
+                        f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
+                        for i, e in enumerate(similar_events)
+                    ])
+                    response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+                else:
+                    failed_events = current_strategy.get('intervention', [])
+                    response = agent.alt_ask(
+                        user_id,
+                        comment,
+                        failed_event=failed_events,
+                        user_profile=user_profile,
+                        situation=situation
+                    )
+
+                # JSON repair 및 파싱
+                repaired = repair_json(response)
+                try:
+                    parsed = json.loads(repaired)
+                except json.JSONDecodeError as e:
+                    st.error(f"⚠️ JSON 파싱 오류: {e}")
+                    st.stop()
+
+                # 전략 업데이트
+                try:
+                    action_input = parsed["action_input"]
+                    first_event = list(action_input.values())[0]
+                    cause = first_event.get("cause")
+                    interventions = first_event.get("intervention")
+                    structured = {"cause": cause, "intervention": interventions}
+                    st.session_state.current_strategy = structured
+                    st.session_state.generated_strategies.append(structured)
+                except Exception as e:
+                    st.error(f"⚠️ 중재 전략 구조 파싱 오류: {e}")
+                    st.stop()
+
+                # 루프 인덱스 증가 및 rerun
+                st.session_state.loop_index += 1
+                st.rerun()
 
 if session_state.survey_saved:
     col1, col2 = st.columns([1, 1])
