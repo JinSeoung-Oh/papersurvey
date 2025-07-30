@@ -8,8 +8,11 @@ import re
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-for key in [k for k in st.session_state.keys() if k != "expert_id"]:
-    del st.session_state[key]
+if 'initialized6' not in st.session_state:
+    for k in list(st.session_state.keys()):
+        if k != "expert_id":
+            del st.session_state[k]
+    st.session_state.initialized6 = True
 
 # Expert ID 입력 (한 번만 입력받음)
 if 'expert_id' not in st.session_state:
