@@ -18,14 +18,9 @@ st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 �
 원본 링크 : https://www.youtube.com/watch?v=Cflrzyu_WZk
 """)
 
-if 'initialized4' not in st.session_state:
-    for k in list(st.session_state.keys()):
-        if k != "expert_id":
-            del st.session_state[k]
-    st.session_state.initialized4 = True
 
 if 'llm' not in st.session_state:
-    st.session_state.llm = _4oMiniClient()
+    st.session_state.llm4 = _4oMiniClient()
 
 # ID가 없으면 작성하라고 유도
 if "expert_id" not in st.session_state or not st.session_state.expert_id:
@@ -33,40 +28,40 @@ if "expert_id" not in st.session_state or not st.session_state.expert_id:
     st.stop()
 
 if 'survey_submitted' not in st.session_state:
-    st.session_state.survey_submitted = False
+    st.session_state.survey_submitted4 = False
 
 # 비디오
 st.video("https://youtu.be/AaWWfjb8DjM")
 
 # 멜트다운 초기 상황에 대한 첫 중재 방안 입력
 if "comments_history" not in st.session_state:
-    st.session_state.comments_history = []
+    st.session_state.comments_history4 = []
 
 if "generated_situations" not in st.session_state:
-    st.session_state.generated_situations = []
+    st.session_state.generated_situations4 = []
 
 if "loop_index" not in st.session_state:
-    st.session_state.loop_index = 0
+    st.session_state.loop_index4 = 0
 
 # 초기 질문만 출력
-if st.session_state.loop_index == 0:
+if st.session_state.loop_index4 == 0:
     comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment")
     if st.button("다음"):
         if comment.strip() == "":
             st.warning("중재 방안을 입력해주세요.")
             st.stop()
-        st.session_state.comments_history.append(comment)
-        st.session_state.loop_index += 1
+        st.session_state.comments_history4.append(comment)
+        st.session_state.loop_index4 += 1
         st.rerun()
 
 # 반복 상황 생성 루프
-elif 1 <= st.session_state.loop_index <= 3:
-    idx = st.session_state.loop_index
+elif 1 <= st.session_state.loop_index4 <= 3:
+    idx = st.session_state.loop_index4
 
     # 상황 생성
-    if len(st.session_state.generated_situations) < idx:
-        user_comment = st.session_state.comments_history[-1]
-        previous_situation = st.session_state.generated_situations[-1] if st.session_state.generated_situations else "초기 멜트다운: 등교길에 우연히 만난 토끼에 매우 놀란 모습을 보임. 울면서 불안한 모습을 보이고 있음"
+    if len(st.session_state.generated_situations4) < idx:
+        user_comment = st.session_state.comments_history4[-1]
+        previous_situation = st.session_state.generated_situations4[-1] if st.session_state.generated_situations4 else "초기 멜트다운: 등교길에 우연히 만난 토끼에 매우 놀란 모습을 보임. 울면서 불안한 모습을 보이고 있음"
         prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
                      {previous_situation}
                      이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
@@ -75,27 +70,27 @@ elif 1 <= st.session_state.loop_index <= 3:
                      다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요.
                      감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
                   """
-        new_situation = st.session_state.llm.call_as_llm(prompt)
-        st.session_state.generated_situations.append(new_situation)
+        new_situation = st.session_state.llm4.call_as_llm(prompt)
+        st.session_state.generated_situations4.append(new_situation)
 
     # 새로운 상황 제시 및 중재 방안 입력
     st.markdown(f"### 새로 생성된 상황 {idx}")
-    st.markdown(st.session_state.generated_situations[idx - 1])
+    st.markdown(st.session_state.generated_situations4[idx - 1])
 
     new_comment = st.text_area("이 상황에 적절한 중재 방안을 입력해주세요", key=f"comment_{idx}")
     if st.button("다음", key=f"next_{idx}"):
         if new_comment.strip() == "":
             st.warning("중재 방안을 입력해주세요.")
             st.stop()
-        st.session_state.comments_history.append(new_comment)
-        st.session_state.loop_index += 1
+        st.session_state.comments_history4.append(new_comment)
+        st.session_state.loop_index4 += 1
         st.rerun()
 
 
-elif st.session_state.loop_index > 3:
+elif st.session_state.loop_index4 > 3:
     st.success("3회의 상황 생성 및 중재 응답이 완료되었습니다. 감사합니다.")
 
-    if not st.session_state.survey_submitted:
+    if not st.session_state.survey_submitted4:
         # 자동 저장
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         expert_id = st.session_state.expert_id
@@ -110,14 +105,14 @@ elif st.session_state.loop_index > 3:
 
         # 상황 + 중재 방안 저장
         with open(filepath, "a", encoding="utf-8") as f:
-            for i, (situation, intervention) in enumerate(zip(st.session_state.generated_situations, st.session_state.comments_history[1:]), start=1):
+            for i, (situation, intervention) in enumerate(zip(st.session_state.generated_situations4, st.session_state.comments_history4[1:]), start=1):
                 f.write(
                     f"{now},{expert_id},{i},"
                     f"\"{situation.strip()}\","
                     f"\"{intervention.strip()}\"\n"
                 )
 
-        st.session_state.survey_submitted = True
+        st.session_state.survey_submitted4 = True
         st.info("응답이 저장되었습니다. 감사합니다.")
 
     # 다음 페이지 이동 버튼
