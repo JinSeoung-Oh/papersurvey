@@ -22,36 +22,89 @@ outformat = {
     "Aggressive behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Self‑harm behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Tantrum behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Ambiguous physical interaction": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     }
   }
+}
 }
 
 st.video("https://youtu.be/GjddtdjWaj8")
