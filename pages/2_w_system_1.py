@@ -167,17 +167,7 @@ if st.session_state.state == "feedback_loop":
             st.session_state.initial_situation if idx == 0
             else st.session_state.generated_situations[idx - 1]
         )
-
-        # 전략 요약 텍스트 생성
-        intervention_txt = ""
-        for item in updated_strat.get('intervention', []):
-            intervention_txt += (
-                f"- 전략: {item.get('strategy')}\n"
-                f"  - 목적: {item.get('purpose')}\n"
-                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
-                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
-            )
-
+      
         # 3) 업데이트된 전략 피드백 영역
         updated_strat = st.session_state.current_strategy
         st.subheader("🤖 업데이트된 중재 전략 피드백")
@@ -188,6 +178,16 @@ if st.session_state.state == "feedback_loop":
           st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
           st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
           st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
+
+        # 전략 요약 텍스트 생성
+        intervention_txt = ""
+        for item in updated_strat.get('intervention', []):
+            intervention_txt += (
+                f"- 전략: {item.get('strategy')}\n"
+                f"  - 목적: {item.get('purpose')}\n"
+                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
+                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
+            )
 
         loop_key = f"new_situation_{idx}"
         # 최초 진입 또는 미생성 시 새로운 상황 생성
