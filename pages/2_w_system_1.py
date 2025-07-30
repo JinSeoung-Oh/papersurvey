@@ -114,7 +114,7 @@ if 'initialized1' not in st.session_state:
     for k in list(st.session_state.keys()):
         if k != "expert_id":
             del st.session_state[k]
-    st.session_state.initialized = True
+    st.session_state.initialized1 = True
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
