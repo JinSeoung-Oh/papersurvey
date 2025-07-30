@@ -160,17 +160,6 @@ if st.session_state.state == "feedback_loop":
     # 구분선
     st.markdown("---")
 
-    # 3) 업데이트된 전략 피드백 영역
-    updated_strat = st.session_state.current_strategy
-    st.subheader("🤖 업데이트된 중재 전략 피드백")
-    st.write(f"**문제 상황 (업데이트):** {st.session_state.situation}")
-    st.write(f"**원인:** {updated_strat.get('cause')}")
-    st.write("**중재 후보 (업데이트):**")
-    for i, intr in enumerate(updated_strat.get('intervention', []), 1):
-        st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
-        st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
-        st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
-
     # 4) 루프 진행: 최대 3번
     if st.session_state.loop_index < 3:
         idx = st.session_state.loop_index
@@ -188,6 +177,17 @@ if st.session_state.state == "feedback_loop":
                 f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
                 f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
             )
+
+        # 3) 업데이트된 전략 피드백 영역
+        updated_strat = st.session_state.current_strategy
+        st.subheader("🤖 업데이트된 중재 전략 피드백")
+        st.write(f"**문제 상황 (업데이트):** {prev_situation}")
+        st.write(f"**원인:** {updated_strat.get('cause')}")
+        st.write("**중재 후보 (업데이트):**")
+        for i, intr in enumerate(updated_strat.get('intervention', []), 1):
+          st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
+          st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
+          st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
         loop_key = f"new_situation_{idx}"
         # 최초 진입 또는 미생성 시 새로운 상황 생성
