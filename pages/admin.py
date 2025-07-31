@@ -39,6 +39,11 @@ df = pd.read_csv(file_path, header=None)
 st.write(f"### `{choice}/{file_choice}` 미리보기")
 st.dataframe(df, use_container_width=True)
 
+with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+    content = f.read(1000)
+st.text("파일 미리보기 (앞부분)")
+st.code(content)
+
 with open(file_path, "rb") as f:
     st.download_button(
         "CSV 파일 다운로드",
