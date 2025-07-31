@@ -216,13 +216,11 @@ if st.session_state.state5 == "feedback_loop":
       
         # 3) 업데이트된 전략 피드백 영역
         updated_strat = st.session_state.current_strategy5
-        st.write(updated_strat)
         st.subheader("🤖 업데이트된 중재 전략 피드백")
         st.write(f"**문제 상황 (업데이트):** {prev_situation}")
         st.write(f"**원인:** {updated_strat.get('cause')}")
         st.write("**중재 후보 (업데이트):**")
         for i, intr in enumerate(updated_strat.get('intervention', []), 1):
-          st.write(intr)
           st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
           st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
