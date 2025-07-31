@@ -106,7 +106,7 @@ outformat = {
   }
 }
 
-st.video("https://youtu.be/GjddtdjWaj8")
+st.video("https://youtu.be/AaWWfjb8DjM")
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
