@@ -8,4 +8,3 @@ langchain
 json-repair
 joblib
 langchain_community
-csv
