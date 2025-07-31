@@ -98,7 +98,7 @@ elif st.session_state.loop_index7 > 3:
         expert_id = st.session_state.expert_id
         user_dir = f"responses/{expert_id}"
         os.makedirs(user_dir, exist_ok=True)
-        filepath = os.path.join(user_dir, "survey1_loop.csv")
+        filepath = os.path.join(user_dir, "survey3_loop.csv")
 
         # 파일이 없다면 헤더 추가
         if not os.path.exists(filepath):
