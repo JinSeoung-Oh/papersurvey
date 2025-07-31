@@ -126,7 +126,7 @@ if 'graph5' not in st.session_state:
         st.session_state.graph5 = CareGraph(st.session_state.llm5)
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
-            user_id="A123",
+            user_id="B123",
             sensory_profile={'sound':'medium','light':'very high'},
             communication_preferences={"visual": "midium", "verbal": "hight"},
             stress_signals=['aggressive behavior'],
@@ -274,7 +274,7 @@ if st.session_state.state5 == "feedback_loop":
             # 7. MemoryAgent 전략 생성
             agent = st.session_state.agent5
             caregraph = st.session_state.graph5
-            user_id = "A123"
+            user_id = "B123"
             situation = st.session_state[loop_key]
             sid, similar_events = caregraph.find_similar_events(user_id, situation)
             user_profile = agent._profile_ctx(user_id)
