@@ -22,39 +22,91 @@ outformat = {
     "Aggressive behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Self‑harm behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Tantrum behavior": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     },
     "Ambiguous physical interaction": {
       "cause": "Brief cause description",
       "intervention": [
-        "Intervention 1",
-        "Intervention 2",
-        "..."
+        {
+          "strategy": "Intervention 1 title",
+          "purpose": "Educational purpose of intervention 1",
+          "example": {
+            "immediate": "Immediate action for intervention 1",
+            "standard": "Standard classroom method for intervention 1"
+          }
+        },
+        {
+          "strategy": "Intervention 2 title",
+          "purpose": "Educational purpose of intervention 2",
+          "example": {
+            "immediate": "Immediate action for intervention 2",
+            "standard": "Standard classroom method for intervention 2"
+          }
+        }
       ]
     }
   }
 }
 
-st.video("https://youtu.be/GjddtdjWaj8")
+st.video("https://youtube.com/shorts/uDWzTxF8qeY")
 
 # --- Helper functions ---
 def load_graph(path: str) -> CareGraph:
@@ -74,7 +126,7 @@ if 'graph8' not in st.session_state:
         st.session_state.graph8 = CareGraph(st.session_state.llm8)
         # 관리자 정의 초기 사용자 프로필
         profile = UserProfile(
-            user_id="A123",
+            user_id="C123",
             sensory_profile={'sound':'medium','light':'very high'},
             communication_preferences={"visual": "midium", "verbal": "hight"},
             stress_signals=['aggressive behavior'],
@@ -82,11 +134,11 @@ if 'graph8' not in st.session_state:
             )
         st.session_state.graph8.add_profile(profile)
 
-if 'agent' not in st.session_state:
+if 'agent8' not in st.session_state:
     st.session_state.agent8 = MemoryAgent(st.session_state.llm8, st.session_state.graph8)
     
 # --- Page‐specific state (state2) initialization ---
-if 'state2' not in st.session_state:
+if 'state8' not in st.session_state:
     st.session_state.state8 = "feedback_loop"
     st.session_state.situation8 = (
         "패밀리 레스토랑에서 자폐 아동이 피로와 배고픔으로 인해 멜트다운을 일으키며 메뉴판을 빼앗으려다 통제가 되지 않자 공격적인 행동을 보입니다."
@@ -149,23 +201,11 @@ if st.session_state.state8 == "feedback_loop":
     st.write(f"**원인:** {default_strat.get('cause')}")
     st.write("**중재 후보 (초기):**")
     for i, intr in enumerate(default_strat.get('intervention', []), 1):
-        st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
     # 구분선
     st.markdown("---")
-
-    # 3) 업데이트된 전략 피드백 영역
-    updated_strat = st.session_state.current_strategy8
-    st.subheader("🤖 업데이트된 중재 전략 피드백")
-    st.write(f"**문제 상황 (업데이트):** {st.session_state.situation8}")
-    st.write(f"**원인:** {updated_strat.get('cause')}")
-    st.write("**중재 후보 (업데이트):**")
-    for i, intr in enumerate(updated_strat.get('intervention', []), 1):
-        st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
-        st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
-        st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
     # 4) 루프 진행: 최대 3번
     if st.session_state.loop_index8 < 3:
@@ -174,6 +214,18 @@ if st.session_state.state8 == "feedback_loop":
             st.session_state.initial_situation8 if idx == 0
             else st.session_state.generated_situations8[idx - 1]
         )
+      
+        # 3) 업데이트된 전략 피드백 영역
+        updated_strat = st.session_state.current_strategy8
+        st.write(updated_strat)
+        st.subheader("🤖 업데이트된 중재 전략 피드백")
+        st.write(f"**문제 상황 (업데이트):** {prev_situation}")
+        st.write(f"**원인:** {updated_strat.get('cause')}")
+        st.write("**중재 후보 (업데이트):**")
+        for i, intr in enumerate(updated_strat.get('intervention', []), 1):
+          st.write(intr)
+          st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
+          st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
         # 전략 요약 텍스트 생성
         intervention_txt = ""
@@ -192,8 +244,10 @@ if st.session_state.state8 == "feedback_loop":
 {prev_situation}
 이에 대해 전문가가 제시한 중재 전략은 다음과 같습니다:
 {intervention_txt}
-이 중재 방안이 충분히 완화하지 못했거나 상황이 거부되었을 때 발생한 **새로운 상황**을 자연스럽게 생성해주세요.
-감각 자극, 외부 요인, 아동의 정서 반응을 포함하여 구체적으로 기술하세요.
+이 중재 방안이 충분히 완화하지 못했거나 중재 방안이 자폐인에 의해 거부되었을 때 발생한 **새로운 상황**을 자연스럽게 생성해주세요.
+감각 자극, 외부 요인, 아동의 정서 반응을 포함하여 구체적으로 기술하세요. 상황 묘사에만 집중하세요. 당신의 답변에 중재방안이나 전문가의 의견이 들어가서는 안 됩니다.
+당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오. 자연스럽게 이어져야 합니다.
+새로운 문제 상황을 만들기 위하여 억지스러운 상황은 만들지 마시고 너무 상황을 극단적으로 묘사하지 마세요. 현실에서 발생할 수 있는 자연스러운 상황 이어야만하며 {prev_situation}과 자여스럽게 이어지는 상황이어야만 합니다.
 단 하나의 감각 자극만 포함되어야 합니다."""
             new_sit = st.session_state.llm8.call_as_llm(prompt)
             st.session_state[loop_key] = new_sit
@@ -206,11 +260,11 @@ if st.session_state.state8 == "feedback_loop":
 
         # 6. 사용자 코멘트 입력 폼
         with st.form(key=f"loop_form_{idx}"):
-            comment = st.text_area(
+          comment = st.text_area(
                 "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
                 key=f"comment_{idx}"
             )
-            submitted = st.form_submit_button("다음")
+          submitted = st.form_submit_button("다음")
 
         if submitted:
             if not comment.strip():
@@ -221,7 +275,7 @@ if st.session_state.state8 == "feedback_loop":
             # 7. MemoryAgent 전략 생성
             agent = st.session_state.agent8
             caregraph = st.session_state.graph8
-            user_id = "A123"
+            user_id = "C123"
             situation = st.session_state[loop_key]
             sid, similar_events = caregraph.find_similar_events(user_id, situation)
             user_profile = agent._profile_ctx(user_id)
@@ -231,7 +285,7 @@ if st.session_state.state8 == "feedback_loop":
                     f"{i+1}. 원인: {e['cause']}, 전략: {e['strategy']}, 목적: {e['purpose']}"
                     for i, e in enumerate(similar_events)
                 ])
-                response = agent.graph_ask(user_id, comment, formatted_events, user_profile)
+                response = agent.graph_ask(user_id, comment, formatted_events, user_profile, outformat)
             else:
                 failed_events = updated_strat.get('intervention', [])
                 response = agent.alt_ask(
@@ -239,11 +293,13 @@ if st.session_state.state8 == "feedback_loop":
                     comment,
                     failed_event=failed_events,
                     user_profile=user_profile,
-                    situation=situation
+                    situation=situation,
+                    outformat = outformat
                 )
 
             # 8. JSON repair & 파싱
             repaired = repair_json(response)
+            st.write(repaired)
             try:
                 parsed = json.loads(repaired)
             except json.JSONDecodeError as e:
@@ -256,6 +312,7 @@ if st.session_state.state8 == "feedback_loop":
                 first_event = list(action_input.values())[0]
                 cause = first_event.get("cause")
                 interventions = first_event.get("intervention")
+                st.write(interventions)
                 structured = {"cause": cause, "intervention": interventions}
                 st.session_state.current_strategy8 = structured
                 st.session_state.generated_strategies8.append(structured)
@@ -266,6 +323,23 @@ if st.session_state.state8 == "feedback_loop":
             # 10. 루프 인덱스 증가 및 rerun
             st.session_state.loop_index8 += 1
             st.rerun()
+            
+    elif st.session_state.loop_index8 >= 3 and not st.session_state.survey_saved8:
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expert_id = st.session_state.expert_id
+        user_dir = f"responses/{expert_id}"
+        os.makedirs(user_dir, exist_ok=True)
+        filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
+        
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
+            for i in range(3):
+                situation = st.session_state.generated_situations8[i].replace("\n", " ")
+                comment = st.session_state.user_comments8[i].replace("\n", " ")
+                strategy = json.dumps(st.session_state.generated_strategies8[i+1], ensure_ascii=False).replace("\n", " ")
+                f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
+        st.session_state.survey_saved8 = True
+        st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
           
 if st.session_state.survey_saved8:
     col1, col2 = st.columns([1, 1])
