@@ -202,7 +202,6 @@ if st.session_state.state2 == "feedback_loop":
     st.write(f"**원인:** {default_strat.get('cause')}")
     st.write("**중재 후보 (초기):**")
     for i, intr in enumerate(default_strat.get('intervention', []), 1):
-        st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
@@ -226,7 +225,6 @@ if st.session_state.state2 == "feedback_loop":
         st.write("**중재 후보 (업데이트):**")
         for i, intr in enumerate(updated_strat.get('intervention', []), 1):
           st.write(intr)
-          st.write(f"{i}. {intr.get('strategy')} - {intr.get('purpose')}")
           st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
           st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
