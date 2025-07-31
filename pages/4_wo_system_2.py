@@ -19,7 +19,7 @@ st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 �
 """)
 
 
-if 'llm' not in st.session_state:
+if 'llm4' not in st.session_state:
     st.session_state.llm4 = _4oMiniClient()
 
 # ID가 없으면 작성하라고 유도
@@ -27,20 +27,20 @@ if "expert_id" not in st.session_state or not st.session_state.expert_id:
     st.warning("먼저 홈에서 응답자 ID를 입력해 주세요.")
     st.stop()
 
-if 'survey_submitted' not in st.session_state:
+if 'survey_submitted4' not in st.session_state:
     st.session_state.survey_submitted4 = False
 
 # 비디오
 st.video("https://youtu.be/AaWWfjb8DjM")
 
 # 멜트다운 초기 상황에 대한 첫 중재 방안 입력
-if "comments_history" not in st.session_state:
+if "comments_history4" not in st.session_state:
     st.session_state.comments_history4 = []
 
-if "generated_situations" not in st.session_state:
+if "generated_situations4" not in st.session_state:
     st.session_state.generated_situations4 = []
 
-if "loop_index" not in st.session_state:
+if "loop_index4" not in st.session_state:
     st.session_state.loop_index4 = 0
 
 # 초기 질문만 출력
@@ -67,8 +67,10 @@ elif 1 <= st.session_state.loop_index4 <= 3:
                      이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
                      {user_comment}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요.
+                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. **억지로 상황을 만들어 복잡하게 하지 마세요**
                      감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
+                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오. 자연스럽게 이어져야 합니다.
                   """
         new_situation = st.session_state.llm4.call_as_llm(prompt)
         st.session_state.generated_situations4.append(new_situation)
