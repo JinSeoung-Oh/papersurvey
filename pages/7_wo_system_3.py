@@ -62,15 +62,17 @@ elif 1 <= st.session_state.loop_index7 <= 3:
     if len(st.session_state.generated_situations7) < idx:
         user_comment = st.session_state.comments_history7[-1]
         previous_situation = st.session_state.generated_situations7[-1] if st.session_state.generated_situations7 else "초기 멜트다운: 식당에서 배고픔과 피곤함에 자폐인이 멜트 다운을 일으키고 있음"
+        user_profile = {'sensory_profile': {'sound': 'high', 'light': 'high'},'comm_prefs': {'visual': 'low', 'verbal': 'medium'},'stress_signals': ['aggressive behavior'],'preference': ['Worm hug']}
         prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
                      {previous_situation}
                      이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
                      {user_comment}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. **억지로 상황을 만들어 복잡하게 하지 마세요**
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 구체적으로 기술해주세요. 상황 묘사에만 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
+                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. {user_profile}을 참고하여 자연스럽게 만들어주시되 만약 {user_profile}에 맞지 않은 상황을 제시하실 때에는 납득 가능한 수준으로 서술해주세요.
+                     **억지로 상황을 만들어 복잡하게 하지 마세요**
+                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 관찰자 시점으로 기술해주세요. 특히 상황 묘사에 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
                      단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
-                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오. 자연스럽게 이어져야 합니다.
+                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오.
                   """
         new_situation = st.session_state.llm7.call_as_llm(prompt)
         st.session_state.generated_situations7.append(new_situation)
