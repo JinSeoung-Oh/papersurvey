@@ -241,7 +241,7 @@ if st.session_state.state2 == "feedback_loop":
         # 최초 진입 또는 미생성 시 새로운 상황 생성
         if loop_key not in st.session_state:
             prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
-                     {previous_situation}
+                     {prev_situation}
                      이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
                      {user_comment}
                      이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
