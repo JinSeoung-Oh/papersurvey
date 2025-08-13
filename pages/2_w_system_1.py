@@ -326,22 +326,43 @@ if st.session_state.state2 == "feedback_loop":
             st.session_state.loop_index2 += 1
             st.rerun()
             
-    elif st.session_state.loop_index2 >= 3 and not st.session_state.survey_saved2:
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        expert_id = st.session_state.expert_id
-        user_dir = f"responses/{expert_id}"
-        os.makedirs(user_dir, exist_ok=True)
-        filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
-        
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
-            for i in range(3):
-                situation = st.session_state.generated_situations2[i].replace("\n", " ")
-                comment = st.session_state.user_comments2[i].replace("\n", " ")
-                strategy = json.dumps(st.session_state.generated_strategies2[i+1], ensure_ascii=False).replace("\n", " ")
-                f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
-        st.session_state.survey_saved2 = True
-        st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
+    elif st.session_state.loop_index2 >= 3:
+      st.subheader("✅ 최종 루프(3/3) 결과")
+      last_sit = st.session_state.generated_situations2[-1] if st.session_state.generated_situations2 else ""
+      last_strat = st.session_state.generated_strategies2[-1] if st.session_state.generated_strategies2 else {}
+
+      st.markdown("### 🔎 최종 생성 상황")
+      st.markdown(last_sit or "_생성된 상황이 없습니다._")
+
+      st.markdown("### 🧩 최종 전략 요약")
+      st.write(f"**원인:** {last_strat.get('cause', '')}")
+      for i, intr in enumerate(last_strat.get('intervention') or [], 1):
+          st.write(f"- 전략 {i}: {intr.get('strategy','')}")
+          ex = intr.get('example') or {}
+          st.write(f"  - 목적: {intr.get('purpose','')}")
+          st.write(f"  - 즉시 적용: {ex.get('immediate','')}")
+          st.write(f"  - 표준 상황: {ex.get('standard','')}")
+
+      # 자동 저장: 표시 직후 1회만 실행
+      if not st.session_state.survey_saved2:
+          now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+          expert_id = st.session_state.expert_id
+          user_dir = f"responses/{expert_id}"
+          os.makedirs(user_dir, exist_ok=True)
+          filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
+
+          n = min(3, len(st.session_state.generated_situations2), len(st.session_state.user_comments2))
+          with open(filepath, "w", encoding="utf-8") as f:
+              f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
+              for i in range(n):
+                  situation = (st.session_state.generated_situations2[i] or "").replace("\n", " ")
+                  comment = (st.session_state.user_comments2[i] or "").replace("\n", " ")
+                  strat_idx = min(i + 1, len(st.session_state.generated_strategies2) - 1)  # 0은 초기전략
+                  strategy = json.dumps(st.session_state.generated_strategies2[strat_idx], ensure_ascii=False).replace("\n", " ")
+                  f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
+
+          st.session_state.survey_saved2 = True
+          st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
 
 if st.session_state.survey_saved2:
     col1, col2 = st.columns([1, 1])
