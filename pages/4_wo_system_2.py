@@ -3,6 +3,7 @@ import streamlit as st
 import datetime
 import os
 import sys
+import random
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
@@ -18,86 +19,185 @@ st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 �
 원본 링크 : https://www.youtube.com/watch?v=Cflrzyu_WZk
 """)
 
-
+# -------------------------------
+# LLM & 세션 상태 초기화 (페이지 전용 키)
+# -------------------------------
 if 'llm4' not in st.session_state:
     st.session_state.llm4 = _4oMiniClient()
 
-# ID가 없으면 작성하라고 유도
+# 전문가 ID 확인 (공통)
 if "expert_id" not in st.session_state or not st.session_state.expert_id:
     st.warning("먼저 홈에서 응답자 ID를 입력해 주세요.")
     st.stop()
 
+# 재현성 있는 난수(감각/비감각 모드 강제용, 페이지 전용 키)
+if "rng4" not in st.session_state:
+    st.session_state.rng4 = random.Random(str(st.session_state.get("expert_id", "seed")) + "_pg4")
+
 if 'survey_submitted4' not in st.session_state:
     st.session_state.survey_submitted4 = False
 
-# 비디오
 st.video("https://youtu.be/AaWWfjb8DjM")
 
-# 멜트다운 초기 상황에 대한 첫 중재 방안 입력
 if "comments_history4" not in st.session_state:
-    st.session_state.comments_history4 = []
+    st.session_state.comments_history4 = []  # 전문가 중재 입력 이력(페이지2)
 
 if "generated_situations4" not in st.session_state:
-    st.session_state.generated_situations4 = []
+    st.session_state.generated_situations4 = []  # LLM 생성 상황 이력(페이지2)
 
 if "loop_index4" not in st.session_state:
-    st.session_state.loop_index4 = 0
+    st.session_state.loop_index4 = 0  # 0: 초기 중재 입력, 1~3: 생성 루프
 
-# 초기 질문만 출력
+# 사용자 프로필(예시)
+USER_PROFILE_4 = {
+    'sensory_profile': {'sound': 'medium', 'light': 'high'},
+    'comm_prefs': {'visual': 'medium', 'verbal': 'high'},
+    'stress_signals': ['aggressive behavior'],
+    'preference': ['Block the light with a blanket']
+}
+
+# -------------------------------
+# 프롬프트 빌더 (히스토리/직전 분리, 모드 고정)
+#  - history_pairs4: 오래된 → 덜 오래된, "직전 페어 제외"
+#  - previous_situation / expert_action: 직전 상황과 그에 대한 중재
+# -------------------------------
+def build_prompt_with_past_history4(
+    previous_situation: str,
+    expert_action: str,          # 직전 상황에 대한 전문가 중재
+    user_profile: dict,
+    history_pairs4: list,        # [(old_situation, its_expert_action), ...]
+    cause_mode: str              # "sensory" | "nonsensory"
+) -> str:
+    if history_pairs4:
+        hist_lines = []
+        for i, (s, a) in enumerate(history_pairs4, 1):
+            hist_lines.append(f"- [과거#{i}] 상황: {s}")
+            hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a}")
+        history_block = "\n".join(hist_lines)
+    else:
+        history_block = "(과거 히스토리 없음)"
+
+    if cause_mode == "sensory":
+        cause_rule = "도전 행동의 원인은 감각적(sensory) 요인 **하나**만 선택하세요(복수 감각 금지)."
+    else:
+        cause_rule = (
+            "도전 행동의 원인은 **비감각적(nonsensory)** 요인 중 하나만 선택하세요 "
+            "(communication, routine/transition, physiological/fatigue, "
+            "emotional dysregulation, social misunderstanding, learned behavior). "
+            "감각 자극은 언급하지 마세요."
+        )
+
+    return f"""
+[과거 히스토리(오래된 → 덜 오래된)]
+{history_block}
+
+[직전 컨텍스트(가장 최근)]
+- 직전 상황(관찰자 시점): {previous_situation}
+- 해당 상황에 대한 전문가 중재(정확히 인용): {expert_action}
+- 사용자 프로필: {user_profile}
+
+[사용 규칙]
+- '과거 히스토리'는 중복·반복을 피하기 위한 참고 자료입니다. 패턴을 복제하지 말고 **겹치지 않는 새로운 전개**를 선택하세요.
+- '직전 컨텍스트'는 이번 생성의 **직접 출발점**입니다. 반드시 직전 중재 이후로 자연스럽게 이어지게 하세요.
+
+[일관성 힌트]
+- 직전 중재로 **제거/차단된 자극은 재등장 금지**(예: 커튼으로 빛 차단 → '빛' 서술 금지).
+- 감각 원인을 고를 경우 **감각 1종만** 사용.
+
+[생성 규칙]
+1) 새 상황은 '직전 컨텍스트' 이후 자연스럽게 이어집니다(완화 실패/거부/부작용 가능).
+2) {cause_rule}
+3) 관찰자 시점, 전문가/중재/조언/평가 직접 언급 금지.
+4) 130~220자, 한 단락.
+5) 흐름: (중재 이후) → 인지/환경 변화 → 정서 변화 → 행동(관찰).
+
+[출력]
+- 위 조건을 만족하는 **상황 서술 문단 1개**만 출력.
+""".strip()
+
+# -------------------------------
+# 초기 질문(중재 입력)
+# -------------------------------
 if st.session_state.loop_index4 == 0:
-    comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment")
-    if st.button("다음"):
+    with st.form("initial_form4"):
+        comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment4")
+        go = st.form_submit_button("다음")
+    if go:
         if comment.strip() == "":
             st.warning("중재 방안을 입력해주세요.")
             st.stop()
-        st.session_state.comments_history4.append(comment)
-        st.session_state.loop_index4 += 1
+        st.session_state.comments_history4.append(comment)  # 초기 중재 저장
+        st.session_state.loop_index4 = 1
         st.rerun()
 
-# 반복 상황 생성 루프
+# -------------------------------
+# 반복 상황 생성 루프 (1~3회)
+# -------------------------------
 elif 1 <= st.session_state.loop_index4 <= 3:
     idx = st.session_state.loop_index4
 
-    # 상황 생성
+    # 상황 생성(아직 안 했으면)
     if len(st.session_state.generated_situations4) < idx:
-        user_comment = st.session_state.comments_history4[-1]
-        previous_situation = st.session_state.generated_situations4[-1] if st.session_state.generated_situations4 else "초기 멜트다운: 등교길에 우연히 만난 토끼에 매우 놀란 모습을 보임. 울면서 불안한 모습을 보이고 있음"
-        user_profile = {'sensory_profile': {'sound': 'medium', 'light': 'high'}, 'comm_prefs': {'visual': 'medium', 'verbal': 'high'}, 'stress_signals': ['aggressive behavior'],'preference': ['Block the light with a blanket']}
-        prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
-                     {previous_situation}
-                     이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
-                     {user_comment}
-                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. {user_profile}을 참고하여 자연스럽게 만들어주시되 만약 {user_profile}에 맞지 않은 상황을 제시하실 때에는 납득 가능한 수준으로 서술해주세요.
-                     **억지로 상황을 만들어 복잡하게 하지 마세요**
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 관찰자 시점으로 기술해주세요. 특히 상황 묘사에 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
-                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
-                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오.
-                     현재 전문가가 자폐인에게 취한 중재 방안으로 인한 자폐인의 상태를 반드시 고려하여 논리적으로 말이 되는 상황이어야만 합니다. 
-                     예를 들어 전문가가 빛을 차단하기 위하여 자폐인에게 담요를 덮어씌여주었으면 자폐인은 그 상태에서는 빛을 볼 수 없습니다.  
-                  """
+        previous_situation = (
+            st.session_state.generated_situations4[-1]
+            if st.session_state.generated_situations4
+            else "초기 멜트다운: 등교길에 우연히 만난 토끼에 매우 놀란 모습을 보임. 울면서 불안한 모습을 보이고 있음"
+        )
+        # “직전 상황에 대한” 전문가 중재(가장 최근 입력)
+        expert_action_txt = st.session_state.comments_history4[-1]
+
+        # ---- 과거 히스토리(전전~) 구성: 오래된 → 덜 오래된, 직전 페어 제외 ----
+        history_pairs4 = []
+        S = len(st.session_state.generated_situations4)
+        # 상황 i에 대한 중재는 comments_history4[i+1]
+        # 과거 범위: i = 0 .. S-2
+        for i in range(max(0, S - 1)):
+            s = st.session_state.generated_situations4[i]
+            if i + 1 < len(st.session_state.comments_history4):
+                a = st.session_state.comments_history4[i + 1]
+                history_pairs4.append((s, a))
+        # 너무 길면 오래된 것부터 최대 N개만 유지
+        MAX_PAST = 3
+        history_pairs4 = history_pairs4[:MAX_PAST]
+
+        # ---- 감각/비감각 모드 선택(난수 또는 번갈아) ----
+        cause_mode = st.session_state.rng4.choice(["sensory", "nonsensory"])
+        # 번갈아 사용하고 싶다면:
+        # cause_mode = "sensory" if (idx % 2 == 1) else "nonsensory"
+
+        prompt = build_prompt_with_past_history4(
+            previous_situation=previous_situation,
+            expert_action=expert_action_txt,
+            user_profile=USER_PROFILE_4,
+            history_pairs4=history_pairs4,
+            cause_mode=cause_mode,
+        )
+
         new_situation = st.session_state.llm4.call_as_llm(prompt)
         st.session_state.generated_situations4.append(new_situation)
 
-    # 새로운 상황 제시 및 중재 방안 입력
+    # 새 상황 표시 + 다음 중재 입력
     st.markdown(f"### 새로 생성된 상황 {idx}")
     st.markdown(st.session_state.generated_situations4[idx - 1])
 
-    new_comment = st.text_area("이 상황에 적절한 중재 방안을 입력해주세요", key=f"comment_{idx}")
-    if st.button("다음", key=f"next_{idx}"):
+    with st.form(f"form_comment4_{idx}"):
+        new_comment = st.text_area("이 상황에 적절한 중재 방안을 입력해주세요", key=f"comment4_{idx}")
+        go_next = st.form_submit_button("다음")
+    if go_next:
         if new_comment.strip() == "":
             st.warning("중재 방안을 입력해주세요.")
             st.stop()
-        st.session_state.comments_history4.append(new_comment)
+        st.session_state.comments_history4.append(new_comment)  # 이번 상황에 대한 중재
         st.session_state.loop_index4 += 1
         st.rerun()
 
-
+# -------------------------------
+# 완료 및 저장
+# -------------------------------
 elif st.session_state.loop_index4 > 3:
     st.success("3회의 상황 생성 및 중재 응답이 완료되었습니다. 감사합니다.")
 
     if not st.session_state.survey_submitted4:
-        # 자동 저장
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         expert_id = st.session_state.expert_id
         user_dir = f"responses/{expert_id}"
@@ -109,14 +209,17 @@ elif st.session_state.loop_index4 > 3:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write("timestamp,expert_id,loop_index,situation,intervention\n")
 
-        # 상황 + 중재 방안 저장
+        # 상황 + '그 상황에 대한' 중재 저장
+        # 규칙: situation_i ↔ comments_history4[i+1]
         with open(filepath, "a", encoding="utf-8") as f:
-            for i, (situation, intervention) in enumerate(zip(st.session_state.generated_situations4, st.session_state.comments_history4[1:]), start=1):
-                f.write(
-                    f"{now},{expert_id},{i},"
-                    f"\"{situation.strip()}\","
-                    f"\"{intervention.strip()}\"\n"
-                )
+            for i, situation in enumerate(st.session_state.generated_situations4):
+                if (i + 1) < len(st.session_state.comments_history4):
+                    intervention = st.session_state.comments_history4[i + 1]
+                    f.write(
+                        f"{now},{expert_id},{i+1},"
+                        f"\"{situation.strip()}\","
+                        f"\"{intervention.strip()}\"\n"
+                    )
 
         st.session_state.survey_submitted4 = True
         st.info("응답이 저장되었습니다. 감사합니다.")
