@@ -311,6 +311,8 @@ if st.session_state.state2 == "feedback_loop":
             MAX_PAST = 4  # 디폴트 + 과거 3개 예시
             history_pairs2 = history_pairs2[:MAX_PAST]
 
+            st.write("📜 Debug: 현재 히스토리 페어들 →", history_pairs2)
+
             # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
             prompt = build_prompt_with_past_history2(
                 previous_situation=prev_situation,
