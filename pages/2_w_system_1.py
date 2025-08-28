@@ -40,7 +40,7 @@ outformat = {
         }
       ]
     },
-    "Self‑harm behavior": {
+    "Self-harm behavior": {
       "cause": "Brief cause description",
       "intervention": [
         {
@@ -114,6 +114,56 @@ def load_graph(path: str) -> CareGraph:
     graph.llm = _4oMiniClient()
     return graph
 
+def strategy_to_text(strat_dict: dict) -> str:
+    """전략 dict를 프롬프트 삽입용 간결 텍스트로 변환"""
+    if not strat_dict:
+        return ""
+    parts = []
+    for it in strat_dict.get("intervention", []) or []:
+        parts.append(
+            f"- 전략: {it.get('strategy','')}\n"
+            f"  - 목적: {it.get('purpose','')}\n"
+            f"  - 즉시 적용: {it.get('example',{}).get('immediate','')}\n"
+            f"  - 표준 상황: {it.get('example',{}).get('standard','')}\n"
+        )
+    return "\n".join(parts).strip()
+
+def build_prompt_with_past_history2(
+    previous_situation: str,      # 직전 상황(관찰자 시점)
+    expert_action_text: str,      # 직전 상황에 대한 중재(요약 텍스트)
+    user_profile: dict,
+    history_pairs2: list          # [(old_situ, old_action_text), ...] 오래된 → 덜 오래된 (디폴트 페어 포함)
+) -> str:
+    if history_pairs2:
+        hist_lines = []
+        for i, (s, a_txt) in enumerate(history_pairs2, 1):
+            hist_lines.append(f"- [과거#{i}] 상황: {s}")
+            hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a_txt.strip()}")
+        history_block = "\n".join(hist_lines)
+    else:
+        history_block = "(과거 히스토리 없음)"
+
+    return f"""
+[과거 히스토리(오래된 → 덜 오래된)]
+{history_block}
+
+[직전 컨텍스트(가장 최근)]
+- 직전 상황(관찰자 시점): {previous_situation}
+- 해당 상황에 대한 전문가 중재(요약/인용): 
+{expert_action_text.strip()}
+
+[사용 규칙]
+- 과거 히스토리는 ‘반복/중복 회피’ 참고용입니다. 패턴을 복제하지 말고 겹치지 않는 전개를 선택하세요.
+- 직전 컨텍스트 이후로 자연스럽게 이어지게 하세요(완화 실패/거부/부작용 가능).
+- 직전 중재로 제거/차단된 자극은 재등장 금지.
+- 관찰자 시점, 한 단락, 130~220자.
+- 흐름: (중재 이후) → 인지/환경 변화 → 정서 변화 → 행동(관찰).
+
+[출력]
+- 조건을 만족하는 상황 서술 문단 1개만 출력.
+""".strip()
+
+# LLM (페이지 전용 키)
 if 'llm2' not in st.session_state:
     st.session_state.llm2 = _4oMiniClient()
 
@@ -156,7 +206,6 @@ if 'state2' not in st.session_state:
     st.session_state.loop_count2 = 0
 
 # 관리자 정의 초기 안내
-
 st.title("상황 1: 일상생활에서의 자폐인 Meltdown")
 st.markdown(""" 영상에서의 멜트 다운 상황 : 영상이 시작되면 Ian은 창문 가까이에서 커튼을 젖히고 바깥을 바라보고 있는데, 바깥은 매우 밝습니다.
 바깥을 바라보던 그는 잠시 후 눈에 띄게 불안한 상태에 빠지며, 울음을 터뜨리고 큰 소리로 외치며 강한 정서적 동요를 보입니다.
@@ -182,92 +231,111 @@ if 'expert_id' not in st.session_state:
     if not st.session_state.expert_id:
         st.stop()
 
+# ===== 디폴트(화면 고정) 보존: 최초 1회만 설정 =====
+if "initial_situation2" not in st.session_state:
+    st.session_state.initial_situation2 = st.session_state.situation2
+if "static_default2" not in st.session_state:
+    st.session_state.static_default2 = st.session_state.initial_situation2  # 화면 고정 디폴트(절대 불변)
+
 # --- Feedback loop ---
 if st.session_state.state2 == "feedback_loop":
-    # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
+    # 1) 루프용 상태 초기화
     if 'loop_index2' not in st.session_state:
         st.session_state.loop_index2 = 0
         st.session_state.generated_situations2 = []
-        st.session_state.generated_strategies2 = [st.session_state.strategy2]
+        st.session_state.generated_strategies2 = [st.session_state.strategy2]  # 0번은 디폴트/초기 전략
         st.session_state.current_strategy2 = st.session_state.strategy2
         st.session_state.user_comments2 = []
         st.session_state.survey_saved2 = False
-        # 초기 상황 복사
-        st.session_state.initial_situation2 = st.session_state.situation2
 
-    # 2) 초기(디폴트) 피드백 영역
+    # 2) 초기(디폴트) 피드백 영역 (화면 고정 디폴트 표시)
     default_strat = st.session_state.strategy2
     st.subheader("🤖 초기 중재 전략 피드백")
-    st.write(f"**문제 상황 (초기):** {st.session_state.initial_situation2}")
+    st.write(f"**문제 상황 (디폴트/고정):** {st.session_state.static_default2}")
     st.write(f"**원인:** {default_strat.get('cause')}")
     st.write("**중재 후보 (초기):**")
     for i, intr in enumerate(default_strat.get('intervention', []), 1):
         st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
         st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-    # 구분선
     st.markdown("---")
 
     # 4) 루프 진행: 최대 3번
     if st.session_state.loop_index2 < 3:
         idx = st.session_state.loop_index2
         prev_situation = (
-            st.session_state.initial_situation2 if idx == 0
+            st.session_state.static_default2 if idx == 0
             else st.session_state.generated_situations2[idx - 1]
         )
-      
-        # 3) 업데이트된 전략 피드백 영역
+
+        # 3) 업데이트된 전략 피드백 영역 (직전 상황에 대한 중재)
         updated_strat = st.session_state.current_strategy2
         st.subheader("🤖 업데이트된 중재 전략 피드백")
-        st.write(f"**문제 상황 (업데이트):** {prev_situation}")
+        st.write(f"**문제 상황 (직전):** {prev_situation}")
         st.write(f"**원인:** {updated_strat.get('cause')}")
         st.write("**중재 후보 (업데이트):**")
         for i, intr in enumerate(updated_strat.get('intervention', []), 1):
-          st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
-          st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
+            st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
+            st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-        # 전략 요약 텍스트 생성
-        intervention_txt = ""
-        for item in updated_strat.get('intervention', []):
-            intervention_txt += (
-                f"- 전략: {item.get('strategy')}\n"
-                f"  - 목적: {item.get('purpose')}\n"
-                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
-                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
-            )
+        # 직전 상황에 대한 중재 텍스트(프롬프트용)
+        intervention_txt = strategy_to_text(updated_strat)
 
         loop_key = f"new_situation_2_{idx}"
-        user_profile = {'sensory_profile': {'sound': 'medium', 'light': 'high'}, 'comm_prefs': {'visual': 'medium', 'verbal': 'high'}, 'stress_signals': ['aggressive behavior'],'preference': ['Block the light with a blanket']}
+        user_profile = {'sensory_profile': {'sound': 'medium', 'light': 'high'},
+                        'comm_prefs': {'visual': 'medium', 'verbal': 'high'},
+                        'stress_signals': ['aggressive behavior'],
+                        'preference': ['Block the light with a blanket']}
+
         # 최초 진입 또는 미생성 시 새로운 상황 생성
         if loop_key not in st.session_state:
-            prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
-                     {prev_situation}
-                     이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
-                     {intervention_txt}
-                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. {user_profile}을 참고하여 자연스럽게 만들어주시되 만약 {user_profile}에 맞지 않은 상황을 제시하실 때에는 납득 가능한 수준으로 서술해주세요.
-                     **억지로 상황을 만들어 복잡하게 하지 마세요**
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 관찰자 시점으로 기술해주세요. 특히 상황 묘사에 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
-                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
-                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오.
-                     현재 전문가가 자폐인에게 취한 중재 방안으로 인한 자폐인의 상태를 반드시 고려하여 논리적으로 말이 되는 상황이어야만 합니다. 
-                     예를 들어 전문가가 빛을 차단하기 위하여 자폐인에게 담요를 덮어씌여주었으면 자폐인은 그 상태에서는 빛을 볼 수 없습니다."""
+            # ---- History 구성: [디폴트 페어] + [전전~ 과거 생성 페어], 오래된→덜 오래된 (직전 제외) ----
+            history_pairs2 = []
+
+            # (a) 디폴트 페어(항상 포함)
+            default_pair = (
+                st.session_state.static_default2,
+                strategy_to_text(st.session_state.generated_strategies2[0])  # 0번은 초기전략
+            )
+            history_pairs2.append(default_pair)
+
+            # (b) 과거 생성 페어: i = 0 .. S-2 (직전 i=S-1 은 제외)
+            S = len(st.session_state.generated_situations2)
+            for i in range(max(0, S - 1)):
+                s = st.session_state.generated_situations2[i]
+                if (i + 1) < len(st.session_state.generated_strategies2):
+                    a_text = strategy_to_text(st.session_state.generated_strategies2[i + 1])
+                    history_pairs2.append((s, a_text))
+
+            # (c) 너무 길면 오래된 것부터 최대 N개만 유지(디폴트 포함)
+            MAX_PAST = 4  # 디폴트 + 과거 3개 예시
+            history_pairs2 = history_pairs2[:MAX_PAST]
+
+            # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
+            prompt = build_prompt_with_past_history2(
+                previous_situation=prev_situation,
+                expert_action_text=intervention_txt,
+                user_profile=user_profile,
+                history_pairs2=history_pairs2,
+            )
             new_sit = st.session_state.llm2.call_as_llm(prompt)
+
             st.session_state[loop_key] = new_sit
             st.session_state.generated_situations2.append(new_sit)
+            # 주의: 화면 고정 디폴트는 static_default2로만 표시. 아래는 '현재 컨텍스트' 용도.
             st.session_state.situation2 = new_sit
 
         # 5. 새 상황 표시
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
         st.markdown(st.session_state[loop_key])
 
-        # 6. 사용자 코멘트 입력 폼
+        # 6. 사용자 코멘트 입력 폼 (요약 입력)
         with st.form(key=f"loop_form_{idx}"):
-          comment = st.text_area(
+            comment = st.text_area(
                 "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
                 key=f"comment_{idx}"
             )
-          submitted = st.form_submit_button("다음")
+            submitted = st.form_submit_button("다음")
 
         if submitted:
             if not comment.strip():
@@ -275,7 +343,7 @@ if st.session_state.state2 == "feedback_loop":
                 st.stop()
             st.session_state.user_comments2.append(comment)
 
-            # 7. MemoryAgent 전략 생성
+            # 7. MemoryAgent 전략 생성 (사용자 코멘트 반영)
             agent = st.session_state.agent2
             caregraph = st.session_state.graph2
             user_id = "A123"
@@ -325,45 +393,46 @@ if st.session_state.state2 == "feedback_loop":
             # 10. 루프 인덱스 증가 및 rerun
             st.session_state.loop_index2 += 1
             st.rerun()
-            
+
     elif st.session_state.loop_index2 >= 3:
-      st.subheader("✅ 최종 루프(3/3) 결과")
-      last_sit = st.session_state.generated_situations2[-1] if st.session_state.generated_situations2 else ""
-      last_strat = st.session_state.generated_strategies2[-1] if st.session_state.generated_strategies2 else {}
+        st.subheader("✅ 최종 루프(3/3) 결과")
+        last_sit = st.session_state.generated_situations2[-1] if st.session_state.generated_situations2 else ""
+        last_strat = st.session_state.generated_strategies2[-1] if st.session_state.generated_strategies2 else {}
 
-      st.markdown("### 🔎 최종 생성 상황")
-      st.markdown(last_sit or "_생성된 상황이 없습니다._")
+        st.markdown("### 🔎 최종 생성 상황")
+        st.markdown(last_sit or "_생성된 상황이 없습니다._")
 
-      st.markdown("### 🧩 최종 전략 요약")
-      st.write(f"**원인:** {last_strat.get('cause', '')}")
-      for i, intr in enumerate(last_strat.get('intervention') or [], 1):
-          st.write(f"- 전략 {i}: {intr.get('strategy','')}")
-          ex = intr.get('example') or {}
-          st.write(f"  - 목적: {intr.get('purpose','')}")
-          st.write(f"  - 즉시 적용: {ex.get('immediate','')}")
-          st.write(f"  - 표준 상황: {ex.get('standard','')}")
+        st.markdown("### 🧩 최종 전략 요약")
+        st.write(f"**원인:** {last_strat.get('cause', '')}")
+        for i, intr in enumerate(last_strat.get('intervention') or [], 1):
+            st.write(f"- 전략 {i}: {intr.get('strategy','')}")
+            ex = intr.get('example') or {}
+            st.write(f"  - 목적: {intr.get('purpose','')}")
+            st.write(f"  - 즉시 적용: {ex.get('immediate','')}")
+            st.write(f"  - 표준 상황: {ex.get('standard','')}")
 
-      # 자동 저장: 표시 직후 1회만 실행
-      if not st.session_state.survey_saved2:
-          now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-          expert_id = st.session_state.expert_id
-          user_dir = f"responses/{expert_id}"
-          os.makedirs(user_dir, exist_ok=True)
-          filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
+        # 자동 저장: 표시 직후 1회만 실행
+        if not st.session_state.survey_saved2:
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            expert_id = st.session_state.expert_id
+            user_dir = f"responses/{expert_id}"
+            os.makedirs(user_dir, exist_ok=True)
+            filepath = os.path.join(user_dir, "survey1_feedbackloop.csv")
 
-          n = min(3, len(st.session_state.generated_situations2), len(st.session_state.user_comments2))
-          with open(filepath, "w", encoding="utf-8") as f:
-              f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
-              for i in range(n):
-                  situation = (st.session_state.generated_situations2[i] or "").replace("\n", " ")
-                  comment = (st.session_state.user_comments2[i] or "").replace("\n", " ")
-                  strat_idx = min(i + 1, len(st.session_state.generated_strategies2) - 1)  # 0은 초기전략
-                  strategy = json.dumps(st.session_state.generated_strategies2[strat_idx], ensure_ascii=False).replace("\n", " ")
-                  f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
+            n = min(3, len(st.session_state.generated_situations2), len(st.session_state.user_comments2))
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("timestamp,expert_id,loop,situation,comment,strategy\n")
+                for i in range(n):
+                    situation = (st.session_state.generated_situations2[i] or "").replace("\n", " ")
+                    comment = (st.session_state.user_comments2[i] or "").replace("\n", " ")
+                    # 저장 규칙: situation_i ↔ strategy_{i+1} (0은 초기전략)
+                    strat_idx = min(i + 1, len(st.session_state.generated_strategies2) - 1)
+                    strategy = json.dumps(st.session_state.generated_strategies2[strat_idx], ensure_ascii=False).replace("\n", " ")
+                    f.write(f"{now},{expert_id},{i+1},\"{situation}\",\"{comment}\",\"{strategy}\"\n")
 
-          st.session_state.survey_saved2 = True
-          st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
-
+            st.session_state.survey_saved2 = True
+            st.success("3회의 루프가 완료되었고 응답이 자동 저장되었습니다. 감사합니다.")
+          
 if st.session_state.survey_saved2:
     col1, col2 = st.columns([1, 1])
     with col1:
