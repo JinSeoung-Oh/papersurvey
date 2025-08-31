@@ -31,9 +31,14 @@ if "expert_id" not in st.session_state or not st.session_state.expert_id:
     st.warning("먼저 홈에서 응답자 ID를 입력해 주세요.")
     st.stop()
 
-# 재현성 있는 난수(감각/비감각 모드 강제용, 페이지 전용 키)
-if "rng7" not in st.session_state:
-    st.session_state.rng7 = random.Random(str(st.session_state.get("expert_id", "seed")) + "_pg7")
+PAGE_ID = Path(__file__).stem
+
+# 페이지 진입 시 1회만 무작위 시드 생성(세션 동안 고정) → rerun 안정, expert_id와 무관
+page_seed_key = f"seed_{PAGE_ID}"
+page_rng_key  = f"rng_{PAGE_ID}"
+if page_seed_key not in st.session_state:
+    st.session_state[page_seed_key] = int.from_bytes(os.urandom(8), "big")
+    st.session_state[page_rng_key]  = random.Random(st.session_state[page_seed_key])
 
 if 'survey_submitted7' not in st.session_state:
     st.session_state.survey_submitted7 = False
@@ -167,7 +172,7 @@ elif 1 <= st.session_state.loop_index7 <= 3:
         history_pairs7 = history_pairs7[:MAX_PAST]
 
         # ---- 감각/비감각 모드 선택(난수 또는 번갈아) ----
-        cause_mode = st.session_state.rng7.choice(["sensory", "nonsensory"])
+        cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
         # 번갈아 사용하고 싶다면:
         # cause_mode = "sensory" if (idx % 2 == 1) else "nonsensory"
 
