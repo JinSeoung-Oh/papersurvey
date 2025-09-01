@@ -8,6 +8,7 @@ import re
 import pandas as pd
 from pathlib import Path
 import sys
+import random
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
@@ -359,7 +360,7 @@ if st.session_state.state2 == "feedback_loop":
             # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
             prompt = build_prompt_with_past_history2(
                 previous_situation=prev_situation,
-                expert_action_text=intervention_txt,
+                expert_action=intervention_txt,
                 user_profile=user_profile,
                 history_pairs2=history_pairs2,
                 cause_mode = cause_mode
