@@ -8,6 +8,7 @@ import re
 import pandas as pd
 from pathlib import Path
 import sys
+import random
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
@@ -40,7 +41,7 @@ outformat = {
         }
       ]
     },
-    "Self‑harm behavior": {
+    "Self-harm behavior": {
       "cause": "Brief cause description",
       "intervention": [
         {
@@ -133,9 +134,100 @@ if 'graph8' not in st.session_state:
             preference = ['Blocking light through a blanket']
             )
         st.session_state.graph8.add_profile(profile)
+      
+def strategy_to_text(strat_dict: dict) -> str:
+    """전략 dict를 프롬프트 삽입용 간결 텍스트로 변환"""
+    if not strat_dict:
+        return ""
+    parts = []
+    for it in strat_dict.get("intervention", []) or []:
+        parts.append(
+            f"- 전략: {it.get('strategy','')}\n"
+            f"  - 목적: {it.get('purpose','')}\n"
+            f"  - 즉시 적용: {it.get('example',{}).get('immediate','')}\n"
+            f"  - 표준 상황: {it.get('example',{}).get('standard','')}\n"
+        )
+    return "\n".join(parts).strip()
 
+def build_prompt_with_past_history8(
+    previous_situation: str,
+    expert_action: str,          # 직전 상황에 대한 전문가 중재
+    user_profile: dict,
+    history_pairs8: list,         # [(old_situation, its_expert_action), ...]
+    cause_mode: str              # "sensory" | "nonsensory"
+) -> str:
+    # 과거 히스토리(전전, 전전전…)
+    if history_pairs8:
+        hist_lines = []
+        for i, (s, a) in enumerate(history_pairs8, 1):
+            hist_lines.append(f"- [과거#{i}] 상황: {s}")
+            hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a}")
+        history_block = "\n".join(hist_lines)
+    else:
+        history_block = "(과거 히스토리 없음)"
+
+    # 감각/비감각 모드 규칙
+    if cause_mode == "sensory":
+        cause_rule = (
+            "도전 행동의 원인은 감각적(sensory) 요인 **정확히 1종**만 선택하세요."
+            " (다중 감각 병기 금지)"
+        )
+    else:
+        # ★ 강화된 비감각 규칙: '원인 프레이밍'을 비감각 6종 중 하나로 고정 + 감각 인과 서술 금지
+        cause_rule = (
+            "도전 행동의 **원인 프레이밍을 비감각(nonsensory) 요인 6종 중 정확히 1개로 고정**하세요 "
+            "[communication | routine/transition | physiological/fatigue | "
+            "emotional dysregulation | social misunderstanding | learned behavior]. "
+            "원인 문장에는 **감각을 인과로 두는 표현을 절대 사용하지 마세요** "
+            "(밝음/소음/냄새/촉감/온도/진동 등 물리적 자극을 원인으로 지목하거나, "
+            "‘감각/자극/과부하’ 같은 단어로 원인을 정의하는 서술 금지). "
+            "불가피하게 환경 맥락이 필요한 경우에도 **감각을 원인으로 명시하지 말고**, "
+            "의사소통 오해, 절차/전환 혼란, 피로 누적, 감정 조절 실패, 사회적 오해, 학습된 반응 중 하나로 "
+            "행동 발생의 논리적 연결을 구성하세요. **선택한 1개 범주가 문맥상 분명히 드러나게** 하되, "
+            "범주 이름 자체를 노출할 필요는 없습니다."
+        )
+
+    return f"""
+[과거 히스토리(오래된 → 덜 오래된)]
+{history_block}
+
+[직전 컨텍스트(가장 최근)]
+- 직전 상황(관찰자 시점): {previous_situation}
+- 해당 상황에 대한 전문가 중재(정확히 인용): {expert_action}
+- 사용자 프로필: {user_profile}
+
+[사용 규칙]
+- '과거 히스토리'는 중복·반복을 피하기 위한 참고 자료입니다. 패턴을 복제하지 말고 **겹치지 않는 새로운 전개**를 선택하세요.
+- '직전 컨텍스트'는 이번 생성의 **직접 출발점**입니다. 반드시 직전 중재 이후로 자연스럽게 이어지게 하세요.
+- **비감각 모드에서는 외부 물리적 자극을 원인으로 설정하거나 감각 용어로 원인을 정의하는 서술을 금지**합니다.
+
+[일관성 힌트]
+- 직전 중재로 **제거/차단된 자극은 재등장 금지**(예: 커튼으로 빛 차단 → '빛' 서술 금지).
+- 감각 원인을 고를 경우 **감각 1종만** 사용.
+
+[생성 규칙]
+1) 새 상황은 '직전 컨텍스트' 이후 자연스럽게 이어집니다(완화 실패/거부/부작용 가능).
+2) {cause_rule}
+3) 관찰자 시점, 전문가/중재/조언/평가 직접 언급 금지.
+4) 130~220자, 한 단락.
+5) 흐름: (중재 이후) → 인지/환경 변화 → 정서 변화 → 행동(관찰).
+
+[출력]
+- 위 조건을 만족하는 **상황 서술 문단 1개**만 출력.
+""".strip()
+  
 if 'agent8' not in st.session_state:
     st.session_state.agent8 = MemoryAgent(st.session_state.llm8, st.session_state.graph8)
+
+# 페이지별 고유 ID(파일명 기준)
+PAGE_ID = Path(__file__).stem
+
+# 페이지 진입 시 1회만 무작위 시드 생성(세션 동안 고정) → rerun 안정, expert_id와 무관
+page_seed_key = f"seed_{PAGE_ID}"
+page_rng_key  = f"rng_{PAGE_ID}"
+if page_seed_key not in st.session_state:
+    st.session_state[page_seed_key] = int.from_bytes(os.urandom(8), "big")
+    st.session_state[page_rng_key]  = random.Random(st.session_state[page_seed_key])
     
 # --- Page‐specific state (state2) initialization ---
 if 'state8' not in st.session_state:
@@ -181,6 +273,12 @@ if 'expert_id' not in st.session_state:
     if not st.session_state.expert_id:
         st.stop()
 
+# ===== 디폴트(화면 고정) 보존: 최초 1회만 설정 =====
+if "initial_situation8" not in st.session_state:
+    st.session_state.initial_situation8 = st.session_state.situation8
+if "static_default28" not in st.session_state:
+    st.session_state.static_default8 = st.session_state.initial_situation8  # 화면 고정 디폴트(절대 불변)
+
 # --- Feedback loop ---
 if st.session_state.state8 == "feedback_loop":
     # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
@@ -191,8 +289,6 @@ if st.session_state.state8 == "feedback_loop":
         st.session_state.current_strategy8 = st.session_state.strategy8
         st.session_state.user_comments8 = []
         st.session_state.survey_saved8 = False
-        # 초기 상황 복사
-        st.session_state.initial_situation8 = st.session_state.situation8
 
     # 2) 초기(디폴트) 피드백 영역
     default_strat = st.session_state.strategy8
@@ -211,7 +307,7 @@ if st.session_state.state8 == "feedback_loop":
     if st.session_state.loop_index8 < 3:
         idx = st.session_state.loop_index8
         prev_situation = (
-            st.session_state.initial_situation8 if idx == 0
+            st.session_state.static_default8 if idx == 0
             else st.session_state.generated_situations8[idx - 1]
         )
       
@@ -225,35 +321,54 @@ if st.session_state.state8 == "feedback_loop":
           st.write(f"   - 즉시 적용: {intr.get('example', {}).get('immediate')}")
           st.write(f"   - 표준 상황: {intr.get('example', {}).get('standard')}")
 
-        # 전략 요약 텍스트 생성
-        intervention_txt = ""
-        for item in updated_strat.get('intervention', []):
-            intervention_txt += (
-                f"- 전략: {item.get('strategy')}\n"
-                f"  - 목적: {item.get('purpose')}\n"
-                f"  - 즉시 적용: {item.get('example', {}).get('immediate')}\n"
-                f"  - 표준 상황: {item.get('example', {}).get('standard')}\n\n"
-            )
+        # 직전 상황에 대한 중재 텍스트(프롬프트용)
+        intervention_txt = strategy_to_text(updated_strat)
 
         loop_key = f"new_situation_8_{idx}"
         user_profile = {'sensory_profile': {'sound': 'high', 'light': 'high'},'comm_prefs': {'visual': 'low', 'verbal': 'medium'},'stress_signals': ['aggressive behavior'],'preference': ['Worm hug']}
+      
         # 최초 진입 또는 미생성 시 새로운 상황 생성
         if loop_key not in st.session_state:
-            prompt = f"""다음은 자폐 아동의 멜트다운 상황입니다:
-                     {prev_situation}
-                     이에 대해 전문가가 제시한 중재 방안은 다음과 같습니다:
-                     {intervention_txt}
-                     이 중재 방안이 자폐인의 멜트다운을 충분히 완화하지 못했거나, 자폐인의 멜트 다운이 너무 심해서 중재를 거부한다거나 혹은 오히려 새로운 갈등 요소를 유발한 **새로운 상황**을 생성해주세요.
-                     다만 억지로 상황을 만들지 마시고 자연스럽게 이어지도록 상황을 만들어주세요. {user_profile}을 참고하여 자연스럽게 만들어주시되 만약 {user_profile}에 맞지 않은 상황을 제시하실 때에는 납득 가능한 수준으로 서술해주세요.
-                     **억지로 상황을 만들어 복잡하게 하지 마세요**
-                     감각 자극, 외부 요인, 아동의 정서 반응 등을 포함하여 관찰자 시점으로 기술해주세요. 특히 상황 묘사에 집중해주세요. 중재 방안이나 전문가는 등장해서는 안 됩니다.
-                     단 하나의 감각 자극에 의한 상황을 제시해주세요. 새롭게 만들어진 상황에는 감각 자극은 단 한 종류만 등장해야만 합니다.
-                     당신이 생성해야 하는 상황은 전문가가 제시한 중재 방안을 시도한 뒤의 상황임을 명심하십시오.
-                     현재 전문가가 자폐인에게 취한 중재 방안으로 인한 자폐인의 상태를 반드시 고려하여 논리적으로 말이 되는 상황이어야만 합니다. 
-                     예를 들어 전문가가 빛을 차단하기 위하여 자폐인에게 담요를 덮어씌여주었으면 자폐인은 그 상태에서는 빛을 볼 수 없습니다."""
+            # ---- History 구성: [디폴트 페어] + [전전~ 과거 생성 페어], 오래된→덜 오래된 (직전 제외) ----
+            history_pairs8 = []
+
+            # (a) 디폴트 페어(항상 포함)
+            default_pair = (
+                st.session_state.static_default8,
+                strategy_to_text(st.session_state.generated_strategies8[0])  # 0번은 초기전략
+            )
+
+            history_pairs8.append(default_pair)
+          
+            # (b) 과거 생성 페어: i = 0 .. S-2 (직전 i=S-1 은 제외)
+            S = len(st.session_state.generated_situations8)
+            for i in range(max(0, S - 1)):
+                s = st.session_state.generated_situations8[i]
+                if (i + 1) < len(st.session_state.generated_strategies8):
+                    a_text = strategy_to_text(st.session_state.generated_strategies8[i + 1])
+                    history_pairs8.append((s, a_text))
+                  
+            # (c) 너무 길면 오래된 것부터 최대 N개만 유지(디폴트 포함)
+            MAX_PAST = 4  # 디폴트 + 과거 3개 예시
+            history_pairs8 = history_pairs2[:MAX_PAST]
+          
+            st.write("📜 Debug: 현재 히스토리 페어들 →", history_pairs8)
+          
+            cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
+          
+            # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
+            prompt = build_prompt_with_past_history8(
+                previous_situation=prev_situation,
+                expert_action=intervention_txt,
+                user_profile=user_profile,
+                history_pairs2=history_pairs8,
+                cause_mode = cause_mode
+            )
             new_sit = st.session_state.llm8.call_as_llm(prompt)
+          
             st.session_state[loop_key] = new_sit
             st.session_state.generated_situations8.append(new_sit)
+            # 주의: 화면 고정 디폴트는 static_default2로만 표시. 아래는 '현재 컨텍스트' 용도.
             st.session_state.situation8 = new_sit
 
         # 5. 새 상황 표시
