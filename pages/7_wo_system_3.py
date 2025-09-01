@@ -69,17 +69,17 @@ USER_PROFILE_7 = {
 #  - history_pairs7: 오래된 → 덜 오래된 (“직전 페어 제외”)
 #  - previous_situation / expert_action: 직전 상황과 그에 대한 중재
 # -------------------------------
-def build_prompt_with_past_history(
+def build_prompt_with_past_history7(
     previous_situation: str,
     expert_action: str,          # 직전 상황에 대한 전문가 중재
     user_profile: dict,
-    history_pairs: list,         # [(old_situation, its_expert_action), ...]
+    history_pairs7: list,         # [(old_situation, its_expert_action), ...]
     cause_mode: str              # "sensory" | "nonsensory"
 ) -> str:
     # 과거 히스토리(전전, 전전전…)
-    if history_pairs:
+    if history_pairs7:
         hist_lines = []
-        for i, (s, a) in enumerate(history_pairs, 1):
+        for i, (s, a) in enumerate(history_pairs7, 1):
             hist_lines.append(f"- [과거#{i}] 상황: {s}")
             hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a}")
         history_block = "\n".join(hist_lines)
