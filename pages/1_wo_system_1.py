@@ -88,13 +88,23 @@ def build_prompt_with_past_history(
 
     # 감각/비감각 모드 규칙
     if cause_mode == "sensory":
-        cause_rule = "도전 행동의 원인은 감각적(sensory) 요인 **하나**만 선택하세요(복수 감각 금지)."
-    else:
         cause_rule = (
-            "도전 행동의 원인은 **비감각적(nonsensory)** 요인 중 하나만 선택하세요 "
-            "(communication, routine/transition, physiological/fatigue, "
-            "emotional dysregulation, social misunderstanding, learned behavior). "
-            "감각 자극은 언급하지 마세요."
+            "도전 행동의 원인은 감각적(sensory) 요인 **정확히 1종**만 선택하세요."
+            " (다중 감각 병기 금지)"
+        )
+    else:
+        # ★ 강화된 비감각 규칙: '원인 프레이밍'을 비감각 6종 중 하나로 고정 + 감각 인과 서술 금지
+        cause_rule = (
+            "도전 행동의 **원인 프레이밍을 비감각(nonsensory) 요인 6종 중 정확히 1개로 고정**하세요 "
+            "[communication | routine/transition | physiological/fatigue | "
+            "emotional dysregulation | social misunderstanding | learned behavior]. "
+            "원인 문장에는 **감각을 인과로 두는 표현을 절대 사용하지 마세요** "
+            "(밝음/소음/냄새/촉감/온도/진동 등 물리적 자극을 원인으로 지목하거나, "
+            "‘감각/자극/과부하’ 같은 단어로 원인을 정의하는 서술 금지). "
+            "불가피하게 환경 맥락이 필요한 경우에도 **감각을 원인으로 명시하지 말고**, "
+            "의사소통 오해, 절차/전환 혼란, 피로 누적, 감정 조절 실패, 사회적 오해, 학습된 반응 중 하나로 "
+            "행동 발생의 논리적 연결을 구성하세요. **선택한 1개 범주가 문맥상 분명히 드러나게** 하되, "
+            "범주 이름 자체를 노출할 필요는 없습니다."
         )
 
     return f"""
@@ -109,6 +119,7 @@ def build_prompt_with_past_history(
 [사용 규칙]
 - '과거 히스토리'는 중복·반복을 피하기 위한 참고 자료입니다. 패턴을 복제하지 말고 **겹치지 않는 새로운 전개**를 선택하세요.
 - '직전 컨텍스트'는 이번 생성의 **직접 출발점**입니다. 반드시 직전 중재 이후로 자연스럽게 이어지게 하세요.
+- **비감각 모드에서는 외부 물리적 자극을 원인으로 설정하거나 감각 용어로 원인을 정의하는 서술을 금지**합니다.
 
 [일관성 힌트]
 - 직전 중재로 **제거/차단된 자극은 재등장 금지**(예: 커튼으로 빛 차단 → '빛' 서술 금지).
