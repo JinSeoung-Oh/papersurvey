@@ -220,7 +220,7 @@ if 'graph2' not in st.session_state:
         profile = UserProfile(
             user_id="A123",
             sensory_profile={'sound':'medium','light':'very high'},
-            communication_preferences={"visual": "midium", "verbal": "hight"},
+            communication_preferences={"visual": "medium", "verbal": "high"},
             stress_signals=['aggressive behavior'],
             preference = ['Blocking light through a blanket']
             )
