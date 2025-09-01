@@ -41,7 +41,7 @@ outformat = {
         }
       ]
     },
-    "Self‑harm behavior": {
+    "Self-harm behavior": {
       "cause": "Brief cause description",
       "intervention": [
         {
@@ -262,6 +262,19 @@ if 'expert_id' not in st.session_state:
     if not st.session_state.expert_id:
         st.stop()
 
+# (llm5 설정 아래쯤)
+PAGE_ID = Path(__file__).stem
+page_seed_key = f"seed_{PAGE_ID}"
+page_rng_key  = f"rng_{PAGE_ID}"
+if page_seed_key not in st.session_state:
+    st.session_state[page_seed_key] = int.from_bytes(os.urandom(8), "big")
+    st.session_state[page_rng_key]  = random.Random(st.session_state[page_seed_key])
+
+if "initial_situation5" not in st.session_state:
+    st.session_state.initial_situation5 = st.session_state.situation5
+if "static_default5" not in st.session_state:
+    st.session_state.static_default5 = st.session_state.initial_situation5
+
 # --- Feedback loop ---
 if st.session_state.state5 == "feedback_loop":
     # 1) 초기화: loop_index, 전략 상태, 초기 상황 저장
@@ -340,7 +353,7 @@ if st.session_state.state5 == "feedback_loop":
                 previous_situation=prev_situation,
                 expert_action=intervention_txt,
                 user_profile=user_profile,
-                history_pairs2=history_pairs5,
+                history_pairs5=history_pairs5,
                 cause_mode = cause_mode
             )
             new_sit = st.session_state.llm5.call_as_llm(prompt)
