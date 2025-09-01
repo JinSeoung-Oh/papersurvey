@@ -129,19 +129,42 @@ def strategy_to_text(strat_dict: dict) -> str:
     return "\n".join(parts).strip()
 
 def build_prompt_with_past_history2(
-    previous_situation: str,      # 직전 상황(관찰자 시점)
-    expert_action_text: str,      # 직전 상황에 대한 중재(요약 텍스트)
+    previous_situation: str,
+    expert_action: str,          # 직전 상황에 대한 전문가 중재
     user_profile: dict,
-    history_pairs2: list          # [(old_situ, old_action_text), ...] 오래된 → 덜 오래된 (디폴트 페어 포함)
+    history_pairs2: list,         # [(old_situation, its_expert_action), ...]
+    cause_mode: str              # "sensory" | "nonsensory"
 ) -> str:
+    # 과거 히스토리(전전, 전전전…)
     if history_pairs2:
         hist_lines = []
-        for i, (s, a_txt) in enumerate(history_pairs2, 1):
+        for i, (s, a) in enumerate(history_pairs2, 1):
             hist_lines.append(f"- [과거#{i}] 상황: {s}")
-            hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a_txt.strip()}")
+            hist_lines.append(f"              해당 상황에 대한 전문가 중재: {a}")
         history_block = "\n".join(hist_lines)
     else:
         history_block = "(과거 히스토리 없음)"
+
+    # 감각/비감각 모드 규칙
+    if cause_mode == "sensory":
+        cause_rule = (
+            "도전 행동의 원인은 감각적(sensory) 요인 **정확히 1종**만 선택하세요."
+            " (다중 감각 병기 금지)"
+        )
+    else:
+        # ★ 강화된 비감각 규칙: '원인 프레이밍'을 비감각 6종 중 하나로 고정 + 감각 인과 서술 금지
+        cause_rule = (
+            "도전 행동의 **원인 프레이밍을 비감각(nonsensory) 요인 6종 중 정확히 1개로 고정**하세요 "
+            "[communication | routine/transition | physiological/fatigue | "
+            "emotional dysregulation | social misunderstanding | learned behavior]. "
+            "원인 문장에는 **감각을 인과로 두는 표현을 절대 사용하지 마세요** "
+            "(밝음/소음/냄새/촉감/온도/진동 등 물리적 자극을 원인으로 지목하거나, "
+            "‘감각/자극/과부하’ 같은 단어로 원인을 정의하는 서술 금지). "
+            "불가피하게 환경 맥락이 필요한 경우에도 **감각을 원인으로 명시하지 말고**, "
+            "의사소통 오해, 절차/전환 혼란, 피로 누적, 감정 조절 실패, 사회적 오해, 학습된 반응 중 하나로 "
+            "행동 발생의 논리적 연결을 구성하세요. **선택한 1개 범주가 문맥상 분명히 드러나게** 하되, "
+            "범주 이름 자체를 노출할 필요는 없습니다."
+        )
 
     return f"""
 [과거 히스토리(오래된 → 덜 오래된)]
@@ -149,23 +172,41 @@ def build_prompt_with_past_history2(
 
 [직전 컨텍스트(가장 최근)]
 - 직전 상황(관찰자 시점): {previous_situation}
-- 해당 상황에 대한 전문가 중재(요약/인용): 
-{expert_action_text.strip()}
+- 해당 상황에 대한 전문가 중재(정확히 인용): {expert_action}
+- 사용자 프로필: {user_profile}
 
 [사용 규칙]
-- 과거 히스토리는 ‘반복/중복 회피’ 참고용입니다. 패턴을 복제하지 말고 겹치지 않는 전개를 선택하세요.
-- 직전 컨텍스트 이후로 자연스럽게 이어지게 하세요(완화 실패/거부/부작용 가능).
-- 직전 중재로 제거/차단된 자극은 재등장 금지.
-- 관찰자 시점, 한 단락, 130~220자.
-- 흐름: (중재 이후) → 인지/환경 변화 → 정서 변화 → 행동(관찰).
+- '과거 히스토리'는 중복·반복을 피하기 위한 참고 자료입니다. 패턴을 복제하지 말고 **겹치지 않는 새로운 전개**를 선택하세요.
+- '직전 컨텍스트'는 이번 생성의 **직접 출발점**입니다. 반드시 직전 중재 이후로 자연스럽게 이어지게 하세요.
+- **비감각 모드에서는 외부 물리적 자극을 원인으로 설정하거나 감각 용어로 원인을 정의하는 서술을 금지**합니다.
+
+[일관성 힌트]
+- 직전 중재로 **제거/차단된 자극은 재등장 금지**(예: 커튼으로 빛 차단 → '빛' 서술 금지).
+- 감각 원인을 고를 경우 **감각 1종만** 사용.
+
+[생성 규칙]
+1) 새 상황은 '직전 컨텍스트' 이후 자연스럽게 이어집니다(완화 실패/거부/부작용 가능).
+2) {cause_rule}
+3) 관찰자 시점, 전문가/중재/조언/평가 직접 언급 금지.
+4) 130~220자, 한 단락.
+5) 흐름: (중재 이후) → 인지/환경 변화 → 정서 변화 → 행동(관찰).
 
 [출력]
-- 조건을 만족하는 상황 서술 문단 1개만 출력.
+- 위 조건을 만족하는 **상황 서술 문단 1개**만 출력.
 """.strip()
-
 # LLM (페이지 전용 키)
 if 'llm2' not in st.session_state:
     st.session_state.llm2 = _4oMiniClient()
+
+# 페이지별 고유 ID(파일명 기준)
+PAGE_ID = Path(__file__).stem
+
+# 페이지 진입 시 1회만 무작위 시드 생성(세션 동안 고정) → rerun 안정, expert_id와 무관
+page_seed_key = f"seed_{PAGE_ID}"
+page_rng_key  = f"rng_{PAGE_ID}"
+if page_seed_key not in st.session_state:
+    st.session_state[page_seed_key] = int.from_bytes(os.urandom(8), "big")
+    st.session_state[page_rng_key]  = random.Random(st.session_state[page_seed_key])
 
 # --- Session initialization ---
 if 'graph2' not in st.session_state:
@@ -313,12 +354,15 @@ if st.session_state.state2 == "feedback_loop":
 
             st.write("📜 Debug: 현재 히스토리 페어들 →", history_pairs2)
 
+            cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
+
             # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
             prompt = build_prompt_with_past_history2(
                 previous_situation=prev_situation,
                 expert_action_text=intervention_txt,
                 user_profile=user_profile,
                 history_pairs2=history_pairs2,
+                cause_mode = cause_mode
             )
             new_sit = st.session_state.llm2.call_as_llm(prompt)
 
