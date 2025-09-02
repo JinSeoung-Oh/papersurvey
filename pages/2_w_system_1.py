@@ -377,12 +377,14 @@ if st.session_state.state2 == "feedback_loop":
         st.markdown(f"### 🔄 루프 {idx+1} — 생성된 새로운 상황")
         st.markdown(st.session_state[loop_key])
 
-        # 6. 사용자 코멘트 입력 폼 (요약 입력)
+        # 6. 사용자 코멘트 입력 폼
         with st.form(key=f"loop_form_{idx}"):
-            comment = st.text_area(
-                "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
-                key=f"comment_{idx}"
+            # 강조된 안내문
+            st.markdown(
+                "<span style='color:red; font-weight:bold;'>현재 주어진 상황을 자유롭게 요약하여 입력해주세요</span>",
+                unsafe_allow_html=True
             )
+            comment = st.text_area("", key=f"comment_{idx}", height=150)
             submitted = st.form_submit_button("다음")
 
         if submitted:
