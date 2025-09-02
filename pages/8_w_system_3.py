@@ -354,8 +354,6 @@ if st.session_state.state8 == "feedback_loop":
             MAX_PAST = 4  # 디폴트 + 과거 3개 예시
             history_pairs8 = history_pairs2[:MAX_PAST]
           
-            st.write("📜 Debug: 현재 히스토리 페어들 →", history_pairs8)
-          
             cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
           
             # ---- 프롬프트 빌드(History + 직전 컨텍스트) & 호출 ----
