@@ -370,11 +370,13 @@ if st.session_state.state5 == "feedback_loop":
 
         # 6. 사용자 코멘트 입력 폼
         with st.form(key=f"loop_form_{idx}"):
-          comment = st.text_area(
-                "현재 주어진 상황을 자유롭게 요약하여 입력해주세요",
-                key=f"comment_{idx}"
+            # 강조된 안내문
+            st.markdown(
+                "<span style='color:red; font-weight:bold;'>현재 주어진 상황을 자유롭게 요약하여 입력해주세요</span>",
+                unsafe_allow_html=True
             )
-          submitted = st.form_submit_button("다음")
+            comment = st.text_area("", key=f"comment_{idx}", height=150)
+            submitted = st.form_submit_button("다음")
 
         if submitted:
             if not comment.strip():
