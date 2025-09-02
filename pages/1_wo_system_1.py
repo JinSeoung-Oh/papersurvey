@@ -232,6 +232,7 @@ elif 1 <= st.session_state.loop_index <= 3:
             history_pairs=history_pairs,
             cause_mode=cause_mode,
         )
+        st.write(f"프롬프트 디버깅: {prompt}"
 
         new_situation = st.session_state.llm.call_as_llm(prompt)
         st.session_state.generated_situations.append(new_situation)
