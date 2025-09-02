@@ -143,7 +143,11 @@ def build_prompt_with_past_history(
 # -------------------------------
 if st.session_state.loop_index == 0:
     with st.form("initial_form"):
-        comment = st.text_area("주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요", key="initial_comment")
+        # 강조된 안내문 (빨간색 + 굵게)
+        st.markdown(
+            "<span style='color:red; font-weight:bold;'>주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요</span>",
+            unsafe_allow_html=True
+        )
         go = st.form_submit_button("다음")
     if go:
         if comment.strip() == "":
