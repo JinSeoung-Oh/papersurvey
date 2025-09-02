@@ -219,6 +219,7 @@ elif 1 <= st.session_state.loop_index <= 3:
 
         # ---- 감각/비감각 모드 선택(난수 또는 번갈아) ----
         cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
+        st.write(f"디버깅: 현재 모드{cause_mode}")
         # 번갈아 쓰고 싶으면 대신 아래 사용:
         # cause_mode = "sensory" if (idx % 2 == 1) else "nonsensory"
 
