@@ -40,7 +40,7 @@ class O3MiniClient:
 class _4oMiniClient:
     def __init__(self):
         self.client = client
-        self.model = "gpt-4o"
+        self.model = "gpt-5"
     def call_as_llm(self, prompt: str) -> str:
         # v1.x 방식: chat.completions.create()
         response = self.client.chat.completions.create(
