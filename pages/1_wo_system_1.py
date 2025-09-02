@@ -148,6 +148,7 @@ if st.session_state.loop_index == 0:
             "<span style='color:red; font-weight:bold;'>주어진 상황에 대하여 가장 적절한 것으로 보이는 중재 방안을 입력해주세요</span>",
             unsafe_allow_html=True
         )
+        comment = st.text_area("", key="initial_comment", height=150)
         go = st.form_submit_button("다음")
     if go:
         if comment.strip() == "":
