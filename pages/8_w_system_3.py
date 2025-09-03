@@ -398,7 +398,7 @@ if st.session_state.state8 == "feedback_loop":
                   
             # (c) 너무 길면 오래된 것부터 최대 N개만 유지(디폴트 포함)
             MAX_PAST = 4  # 디폴트 + 과거 3개 예시
-            history_pairs8 = history_pairs2[:MAX_PAST]
+            history_pairs8 = history_pairs8[:MAX_PAST]
           
             cause_mode = st.session_state[page_rng_key].choice(["sensory", "nonsensory"])
           
