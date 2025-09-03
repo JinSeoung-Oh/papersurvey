@@ -407,7 +407,7 @@ if st.session_state.state8 == "feedback_loop":
                 previous_situation=prev_situation,
                 expert_action=intervention_txt,
                 user_profile=user_profile,
-                history_pairs2=history_pairs8,
+                history_pairs8=history_pairs8,
                 cause_mode = cause_mode
             )
             new_sit = st.session_state.llm8.call_as_llm(prompt)
